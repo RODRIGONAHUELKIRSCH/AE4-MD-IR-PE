@@ -167,7 +167,7 @@ def aFraccion(valor):
     0,25; costos) se pueden escribir con decimales y, con float, 0.1 + 0.2 no da
     exactamente 0.3. Con Fraction las cuentas son exactas y no hacen falta
     tolerancias. Los números JSON se convierten pasando por texto (str) para
-    que 0.25 sea exactamente 1/4. Acepta también fracciones escritas como '3/4'.
+    que 0.25 sea exactamente 1/4. Acepta fracciones escritas como '3/4' y decimales con coma o punto ('0,5').
 
     Parámetros:
         valor (int | float | str): dato a convertir.
@@ -181,7 +181,7 @@ def aFraccion(valor):
         if isinstance(valor, (int, float)):
             return Fraction(str(valor))
         if isinstance(valor, str):
-            return Fraction(valor.strip())
+            return Fraction(valor.strip().replace(",", "."))   # acepta coma decimal (0,5)
     except (ValueError, ZeroDivisionError):
         return None
     return None
@@ -190,7 +190,7 @@ def aFraccion(valor):
 def pedirEntero(mensaje, minimo, maximo):
     """Pide un entero por teclado y repite la pregunta hasta que sea válido.
 
-    Implementa la validación de datos del RNF-04: ni un texto que no sea número
+    Implementa la validación de datos del RNF-06 a RNF-08: ni un texto que no sea número
     ni un valor fuera del rango [minimo, maximo] hacen caer el programa.
 
     Parámetros:
@@ -2818,7 +2818,7 @@ def guardarFigura(figura, carpeta, nombreArchivo, abrirVentana):
     ruta = os.path.join(carpeta, nombreArchivo)
     figura.savefig(ruta, dpi=150)
     if abrirVentana:
-        plt.show()
+        plt.show(block=True)        # espera a que el usuario cierre la ventana
     plt.close(figura)
     return ruta
 
@@ -2931,7 +2931,12 @@ def generarGraficos():
         else:
             numeros = [opcion]
         for numero in numeros:
-            ruta = generarGrafico(numero, None, ventana)
+            try:
+                ruta = generarGrafico(numero, None, ventana)
+            except Exception as error:      # un fallo al dibujar no debe sacar al usuario del menú
+                plt.close("all")
+                ruta = None
+                print("No se pudo generar el gráfico", numero, "->", type(error).__name__, error)
             if ruta is not None:
                 print("Gráfico guardado en", ruta)
 
