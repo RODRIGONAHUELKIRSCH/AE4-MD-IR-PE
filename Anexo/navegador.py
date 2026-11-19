@@ -19,9 +19,17 @@ def sinAcentos(texto):
         resultado += cambios.get(letra, letra)
     return resultado
 
+def ciudadDeNodo(nodo):
+    # el río Paraná separa las dos ciudades: el puente cruza entre las longitudes -58.869 y -58.852
+    if nodo["lon"] > -58.86:
+        return "Corrientes"
+    return "Resistencia"
+
 def buscarEsquina(nodos, texto1, texto2):
+    # devuelve un diccionario {ciudad: idNodo} con la primera esquina encontrada en cada ciudad
     t1 = sinAcentos(texto1)
     t2 = sinAcentos(texto2)
+    encontradas = {}
     for idNodo in nodos:
         tiene1 = False
         tiene2 = False
@@ -32,10 +40,12 @@ def buscarEsquina(nodos, texto1, texto2):
             if t2 in nombre:
                 tiene2 = True
         if tiene1 and tiene2:
-            return idNodo
-    return None
+            ciudad = ciudadDeNodo(nodos[idNodo])
+            if ciudad not in encontradas:
+                encontradas[ciudad] = idNodo
+    return encontradas
 
-def dijkstra(grafo, origen):
+def dijkstra(grafo, costos, origen):
     infinito = float("inf")
     distancias = {}
     previos = {}
@@ -54,7 +64,7 @@ def dijkstra(grafo, origen):
             break
         visitados[actual] = True
         for vecino in grafo[actual]:
-            nueva = distancias[actual] + grafo[actual][vecino]
+            nueva = distancias[actual] + costos[actual][vecino]
             if nueva < distancias[vecino]:
                 distancias[vecino] = nueva
                 previos[vecino] = actual
@@ -146,7 +156,7 @@ def mostrarMapa(grafo, nodos, pasos, cantidad):
     derecha = 0.99
     abajo = 0.01
     arriba = 0.80
-    plt.figure(num="Rodrigo Nahuel Kirsch - Federico Molina", figsize=(anchoFigura, altoFigura))
+    plt.figure(num="Rodrigo Nahuel Kirsch", figsize=(anchoFigura, altoFigura))
     plt.subplots_adjust(left=izquierda, right=derecha, bottom=abajo, top=arriba)
     # forma de la zona de dibujo (alto / ancho), para centrar el mapa
     forma = ((arriba - abajo) * altoFigura) / ((derecha - izquierda) * anchoFigura)
@@ -177,24 +187,12 @@ def mostrarMapa(grafo, nodos, pasos, cantidad):
     plt.figlegend(handles=referencias, title="Referencias:", loc="upper center",
                   bbox_to_anchor=(0.5, 0.945), frameon=False, fontsize=12, title_fontsize=13)
     plt.axis("off")
-    if posiciones[inicio][1] <= posiciones[fin][1]:
-        sentido = {"origen": -16, "destino": 16}
-    else:
-        sentido = {"origen": 16, "destino": -16}
-    for rotulo, idNodo in (("Origen: ", inicio), ("Destino: ", fin)):
-        clave = rotulo.split(":")[0].lower()
-        desplazamiento = sentido[clave]
-        plt.annotate(rotulo + nombreEsquina(nodos, idNodo), xy=posiciones[idNodo],
-                     xytext=(0, desplazamiento), textcoords="offset points", ha="center",
-                     va="top" if desplazamiento < 0 else "bottom", fontsize=9, fontweight="bold",
-                     bbox=dict(facecolor="white", alpha=1, edgecolor="gray"),
-                     annotation_clip=False, zorder=10)
     lons = []
     lats = []
     for idNodo in nodosRuta:
         lons.append(posiciones[idNodo][0])
         lats.append(posiciones[idNodo][1])
-    margen = 0.006
+    margen = max(0.006, 0.12 * max(max(lons) - min(lons), max(lats) - min(lats)))
     xMin = min(lons) - margen
     xMax = max(lons) + margen
     yMin = min(lats) - margen
@@ -218,6 +216,27 @@ def mostrarMapa(grafo, nodos, pasos, cantidad):
     plt.ylim(yMin, yMax)
     plt.gca().set_aspect(proporcion)
 
+    if posiciones[inicio][1] <= posiciones[fin][1]:
+        sentido = {"origen": -16, "destino": 16}
+    else:
+        sentido = {"origen": 16, "destino": -16}
+    for rotulo, idNodo in (("Origen: ", inicio), ("Destino: ", fin)):
+        clave = rotulo.split(":")[0].lower()
+        desplazamiento = sentido[clave]
+        fraccion = (posiciones[idNodo][0] - xMin) / (xMax - xMin)
+        if fraccion < 0.2:
+            alineacion = "left"
+        elif fraccion > 0.8:
+            alineacion = "right"
+        else:
+            alineacion = "center"
+        plt.annotate(rotulo + nombreEsquina(nodos, idNodo), xy=posiciones[idNodo],
+                     xytext=(0, desplazamiento), textcoords="offset points", ha=alineacion,
+                     va="top" if desplazamiento < 0 else "bottom", fontsize=9, fontweight="bold",
+                     bbox=dict(facecolor="white", alpha=1, edgecolor="gray"),
+                     annotation_clip=False, zorder=10)
+
+
     tramos, cuantos = armarTramos(grafo, nodos, pasos, cantidad)
     enRuta = {}
     for t in range(1, cuantos + 1):
@@ -233,6 +252,8 @@ def mostrarMapa(grafo, nodos, pasos, cantidad):
                     if calle not in porCalle:
                         porCalle[calle] = {}
                     porCalle[calle][len(porCalle[calle]) + 1] = idNodo
+    if xMax - xMin > 0.06:
+        porCalle = {}
     for calle in porCalle:
         puntos = porCalle[calle]
         if len(puntos) < 2:
@@ -300,21 +321,38 @@ def pedirEsquina(nodos, etiqueta):
             print("  Cancelado.")
             return None
         calle2 = input("  Segunda calle: ")
-        idNodo = buscarEsquina(nodos, calle1, calle2)
-        if idNodo is None:
+        encontradas = buscarEsquina(nodos, calle1, calle2)
+        if len(encontradas) == 0:
             print("  No encontré esa esquina, probá con otro nombre.")
+        elif len(encontradas) == 1:
+            for ciudad in encontradas:
+                idNodo = encontradas[ciudad]
+                print("  Encontrada:", nombreEsquina(nodos, idNodo), "(" + ciudad + ")")
+                return idNodo
         else:
-            print("  Encontrada:", nombreEsquina(nodos, idNodo))
-            return idNodo
+            print("  Esa esquina existe en más de una ciudad:")
+            numeradas = {}
+            numero = 0
+            for ciudad in encontradas:
+                numero += 1
+                numeradas[numero] = encontradas[ciudad]
+                print(" ", numero, "-", nombreEsquina(nodos, encontradas[ciudad]), "(" + ciudad + ")")
+            try:
+                elegido = int(input("  Número de la esquina que querés: "))
+            except ValueError:
+                elegido = 0
+            if elegido in numeradas:
+                return numeradas[elegido]
+            print("  Opción inválida, probá de nuevo.")
 
-def calcularRuta(grafo, nodos):
+def calcularRuta(grafo, costos, nodos):
     origen = pedirEsquina(nodos, "Esquina de origen")
     if origen is None:
         return
     destino = pedirEsquina(nodos, "Esquina de destino")
     if destino is None:
         return
-    distancias, previos = dijkstra(grafo, origen)
+    distancias, previos = dijkstra(grafo, costos, origen)
     if distancias[destino] == float("inf"):
         print("No hay camino entre esas esquinas")
         return
@@ -327,9 +365,11 @@ def calcularRuta(grafo, nodos):
         if esquina != ultimo:
             print(" ->", esquina)
         ultimo = esquina
-    print("Distancia total:", round(distancias[destino]), "metros")
-
     tramos, cuantos = armarTramos(grafo, nodos, pasos, cantidad)
+    total = 0
+    for t in range(1, cuantos + 1):
+        total += tramos[t]["metros"]
+    print("Distancia total:", round(total), "metros")
     print("Calles del recorrido:")
     acumulado = 0
     for t in range(1, cuantos + 1):
@@ -393,7 +433,7 @@ def eliminarNodo(grafo, nodos):
 
 def mostrarMenu():
     print()
-    print("<===== NAVEGADOR DE RUTAS - RESISTENCIA =====>")
+    print("===== NAVEGADOR DE RUTAS - RESISTENCIA Y CORRIENTES =====")
     print("1 - Calcular ruta")
     print("2 - Eliminar una arista (tramo de calle)")
     print("3 - Eliminar un nodo (esquina)")
@@ -405,6 +445,7 @@ def main():
         return
     nodos = datos["nodos"]
     grafo = datos["tramos"]
+    costos = datos["costos"]
 
     opcion = ""
     while opcion != "4":
@@ -412,7 +453,7 @@ def main():
         opcion = input("Elegí una opción: ").strip()
         match opcion:
             case "1":
-                calcularRuta(grafo, nodos)
+                calcularRuta(grafo, costos, nodos)
             case "2":
                 eliminarArista(grafo, nodos)
             case "3":

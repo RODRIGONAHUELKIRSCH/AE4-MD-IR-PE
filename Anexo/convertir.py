@@ -34,6 +34,71 @@ def tramosDeCalle(coords, zona):
         pedazos[cantidad] = actual
     return pedazos
 
+def factorDeCalle(tipo):
+    # Las calles chicas (residenciales, de servicio) "cuestan" más que las avenidas y rutas, así el
+    # camino prefiere las vías principales aunque sea apenas más largo en metros.
+    chicas = {"residential": True, "service": True, "living_street": True, "unclassified": True}
+    if tipo in chicas:
+        return 1.3
+    return 1.0
+
+def unirCortes(nodos, tramos, costos, maxMetros):
+    # En OpenStreetMap a veces una calle termina a pocos metros de la siguiente sin compartir el
+    # punto, y el grafo queda cortado (por ejemplo, la Autovía antes de la rotonda).
+    # Un nodo sin salida se une al nodo más cercano (dentro de maxMetros) que sí tenga salida,
+    # y un nodo sin entrada se une desde el nodo más cercano que sí tenga entrada.
+    entradas = {}
+    for n in nodos:
+        entradas[n] = 0
+    for origen in tramos:
+        for destino in tramos[origen]:
+            entradas[destino] += 1
+    celdas = {}
+    for n in nodos:
+        clave = (round(nodos[n]["lat"] * 2000), round(nodos[n]["lon"] * 2000))
+        if clave not in celdas:
+            celdas[clave] = {}
+        celdas[clave][n] = True
+
+    def masCercano(a, condicion):
+        ca = (round(nodos[a]["lat"] * 2000), round(nodos[a]["lon"] * 2000))
+        mejor = None
+        mejorDist = maxMetros
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for b in celdas.get((ca[0] + dx, ca[1] + dy), {}):
+                    if b == a or a in tramos[b] or b in tramos[a] or not condicion(b):
+                        continue
+                    d = distancia(nodos[a]["lat"], nodos[a]["lon"], nodos[b]["lat"], nodos[b]["lon"])
+                    if d < mejorDist:
+                        mejorDist = d
+                        mejor = b
+        return mejor, mejorDist
+
+    agregados = 0
+    sinSalida = {}
+    sinEntrada = {}
+    for a in nodos:
+        if len(tramos[a]) == 0:
+            sinSalida[a] = True
+        if entradas[a] == 0:
+            sinEntrada[a] = True
+    for a in sinSalida:
+        b, d = masCercano(a, lambda x: len(tramos[x]) > 0)
+        if b is not None:
+            tramos[a][b] = round(d, 1)
+            costos[a][b] = round(d, 1)
+            entradas[b] += 1
+            agregados += 1
+    for a in sinEntrada:
+        b, d = masCercano(a, lambda x: entradas[x] > 0)
+        if b is not None:
+            tramos[b][a] = round(d, 1)
+            costos[b][a] = round(d, 1)
+            entradas[a] += 1
+            agregados += 1
+    print("Cortes unidos:", agregados)
+
 def convertirGeo(archivoEntrada, archivoSalida, zona):
     noAuto = {"footway": True, "path": True, "steps": True, "cycleway": True,
               "pedestrian": True, "track": True, "bridleway": True, "corridor": True}
@@ -56,7 +121,7 @@ def convertirGeo(archivoEntrada, archivoSalida, zona):
         pedazos = tramosDeCalle(feature["geometry"]["coordinates"], zona)
         for p in pedazos:
             cuantas += 1
-            calles[cuantas] = {"nombre": nombre, "mano": props.get("oneway", "no"), "puntos": pedazos[p]}
+            calles[cuantas] = {"nombre": nombre, "mano": props.get("oneway", "no"), "tipo": props.get("highway"), "puntos": pedazos[p]}
             for i in pedazos[p]:
                 clave = str(pedazos[p][i][1]) + "," + str(pedazos[p][i][0])
                 veces[clave] = veces.get(clave, 0) + 1
@@ -64,10 +129,12 @@ def convertirGeo(archivoEntrada, archivoSalida, zona):
     # paso 2: quedarse solo con las esquinas (puntos compartidos o extremos)
     nodos = {}
     tramos = {}
+    costos = {}
     for c in calles:
         puntos = calles[c]["puntos"]
         total = len(puntos)
         mano = calles[c]["mano"]
+        factor = factorDeCalle(calles[c]["tipo"])
         anterior = None
         acumulado = 0
         for i in range(1, total + 1):
@@ -81,21 +148,27 @@ def convertirGeo(archivoEntrada, archivoSalida, zona):
                 if clave not in nodos:
                     nodos[clave] = {"lat": lat, "lon": lon, "calles": {}}
                     tramos[clave] = {}
+                    costos[clave] = {}
                 nodos[clave]["calles"][calles[c]["nombre"]] = True
                 if anterior is not None and anterior != clave:
                     d = round(acumulado, 1)
                     if mano == "-1":
                         tramos[clave][anterior] = d
+                        costos[clave][anterior] = round(d * factor, 1)
                     else:
                         tramos[anterior][clave] = d
+                        costos[anterior][clave] = round(d * factor, 1)
                         if mano != "yes":
                             tramos[clave][anterior] = d
+                            costos[clave][anterior] = round(d * factor, 1)
                 anterior = clave
                 acumulado = 0
 
+    unirCortes(nodos, tramos, costos, 10)
+
     with open(archivoSalida, "w", encoding="utf-8") as f:
-        json.dump({"nodos": nodos, "tramos": tramos}, f, ensure_ascii=False)
+        json.dump({"nodos": nodos, "tramos": tramos, "costos": costos}, f, ensure_ascii=False)
     print("Grafo generado:", len(nodos), "nodos")
 
-zona = {"latMin": -27.480, "latMax": -27.425, "lonMin": -59.025, "lonMax": -58.950}
-convertirGeo("export.geojson", "calles.json", zona)
+zona = {"latMin": -27.500, "latMax": -27.415, "lonMin": -59.020, "lonMax": -58.790}
+convertirGeo("export_1.geojson", "calles.json", zona)
