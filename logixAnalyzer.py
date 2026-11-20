@@ -28,41 +28,24 @@
 #   RF-26 a RF-30  Sistema 2 x 2 entre rectas   cargarCostosArchivo, puntoEquilibrio, mostrarEquilibrios
 #   RF-31 a RF-34  Grafo ponderado y Dijkstra   cargarRedArchivo, dijkstra, mostrarCaminoMinimo
 #   RF-35 y RF-36  Orden topológico             ordenDeMigracion
-#   RF-37 a RF-41  Ficha de un módulo           consultarModulo
+#   RF-37 a RF-41 y RF-63  Ficha de un módulo   consultarModulo
 #   RF-42 a RF-47  Combinación lineal v = P.w   cargarDecisionArchivo, validarPesos, calcularPuntajes,
 #                                               rankingDeAlternativas, pesoDeCambio
 #   RF-48 a RF-52  Relaciones como matrices     multiplicarTablas, analizarIncidencia,
 #                                               analizarTrazabilidad
-#   RF-53 a RF-58  Digrafo de procesos          cargarProcesoArchivo, caminosSimples, mostrarProceso
+#   RF-53 a RF-58 y RF-64  Digrafo de procesos          cargarProcesoArchivo, caminosSimples, mostrarProceso
 #   RF-59 a RF-62  Principios de conteo         permutaciones, variaciones, combinaciones
-#   RF-63 a RF-69  Gráficos (opcional)          generarGraficos y las funciones dibujar...
+#   (opcional, sin RF)  Gráficos                generarGraficos y las funciones dibujar...
 #
-# ESTRUCTURAS DE DATOS
-#   - diccionario de diccionarios -> matrices y relaciones: tabla[fila][columna]
-#   - diccionario de diccionarios -> grafo ponderado: grafo[nodo][vecino] = minutos
-#   - diccionarios simples        -> grados, distancias, predecesores, pesos, puntajes
-#   - lista de diccionarios       -> "fichas" (registros que se ordenan y se buscan)
-#   - lista de listas             -> matriz ampliada de Gauss-Jordan (acceso por
-#                                    posición de fila y de columna)
-#   - Fraction (módulo fractions) -> todos los números del modelo: aritmética
-#                                    exacta, sin errores de redondeo ni tolerancias
-#
-# ALGORITMOS DE ORDENAMIENTO Y BÚSQUEDA (programados a mano)
-#   - ordenarBurbuja    : ranking de criticidad (grado de entrada)
-#   - ordenarSeleccion  : ranking de acoplamiento, fichas por código, alternativas
-#                         por costo y por puntaje
-#   - busquedaBinaria   : localizar un módulo en la lista ordenada por código
-#   - busquedaSecuencial: posición de un módulo dentro de un ranking
+# ESTRUCTURAS Y ALGORITMOS
+#   Matrices y grafos como diccionarios de diccionarios; fichas como lista de diccionarios;
+#   números con Fraction (exactos). Ordenamiento (burbuja, selección) y búsqueda (binaria,
+#   secuencial) programados a mano.
 #
 # CONVENCIONES
-#   - camelCase en todos los nombres; sin guiones bajos ni variables en mayúsculas.
-#   - Una función hace una sola cosa; las que muestran por pantalla empiezan con
-#     "mostrar", las que leen archivos con "cargar", las que calculan no imprimen.
-#   - Cada función documenta: qué hace, modelo matemático, parámetros, valor que
-#     devuelve y complejidad.
-#   - A propósito NO se usa "if __name__ == ...": esa forma exige guiones bajos,
-#     que el equipo decidió no usar. Consecuencia: importar este archivo
-#     desde otro programa lo ejecuta (abre el menú).
+#   camelCase sin guiones bajos; una función hace una sola cosa ("mostrar..." imprime,
+#   "cargar..." lee datos, el resto calcula). No se usa "if __name__ == ..." (exige guiones
+#   bajos): importar este archivo abre el menú.
 # =============================================================================
 
 import json
@@ -87,20 +70,12 @@ maxIncognitas = 5          # límite de incógnitas que pide el RNF-07
 infinito = float("inf")    # "todavía no hay camino" en Dijkstra (más seguro que 999999)
 nombreCarpetaGraficos = "graficos"   # carpeta donde se guardan las imágenes PNG
 
-
-# -----------------------------------------------------------------------------
-# Funciones generales de archivos y de entrada de datos
-# -----------------------------------------------------------------------------
+# --- Funciones generales de archivos y de entrada de datos ---
 
 def calcularCarpetaPrograma():
     """Devuelve la carpeta donde está guardado este programa.
-
-    Sirve para encontrar los archivos JSON aunque el programa se ejecute desde
-    otra carpeta (por ejemplo, desde un editor que abre otro directorio de trabajo).
-
-    Devuelve:
-        str: ruta de la carpeta del programa; si no se puede saber (modo
-        interactivo), la carpeta de trabajo actual.
+    Devuelve: str: ruta de la carpeta del programa; si no se puede saber (modo interactivo), la
+      carpeta de trabajo actual.
     """
     if len(sys.argv) == 0 or sys.argv[0] == "":
         return os.getcwd()
@@ -109,36 +84,19 @@ def calcularCarpetaPrograma():
 
 carpetaPrograma = calcularCarpetaPrograma()
 
-
 def rutaArchivo(nombreArchivo):
     """Resuelve dónde está un archivo de datos.
-
-    Primero busca el nombre tal como lo escribió el usuario (ruta relativa a la
-    carpeta de trabajo o ruta completa). Si no existe, lo busca en la carpeta del
-    programa. Así las opciones del menú no fallan por ejecutar desde otra carpeta.
-
-    Parámetros:
-        nombreArchivo (str): nombre o ruta del archivo.
-    Devuelve:
-        str: ruta que se debe abrir (puede no existir; el error lo informa quien lee).
+    Parámetros: nombreArchivo (str): nombre o ruta del archivo.
+    Devuelve: str: ruta que se debe abrir (puede no existir; el error lo informa quien lee).
     """
     if os.path.exists(nombreArchivo):
         return nombreArchivo
     return os.path.join(carpetaPrograma, nombreArchivo)
 
-
 def leerArchivoJson(nombreArchivo):
     """Lee un archivo JSON y devuelve su contenido como diccionario.
-
-    Usa 'with' para que el archivo se cierre siempre, aun cuando el JSON esté mal
-    escrito. Informa el error por pantalla (no lanza excepciones al resto del
-    programa) y devuelve None si algo falla. También rechaza archivos cuyo
-    contenido principal no sea un objeto JSON (diccionario).
-
-    Parámetros:
-        nombreArchivo (str): nombre o ruta del archivo.
-    Devuelve:
-        dict | None: contenido del archivo, o None si hubo un error.
+    Parámetros: nombreArchivo (str): nombre o ruta del archivo.
+    Devuelve: dict | None: contenido del archivo, o None si hubo un error.
     Complejidad: O(tamaño del archivo).
     """
     ruta = rutaArchivo(nombreArchivo)
@@ -159,21 +117,11 @@ def leerArchivoJson(nombreArchivo):
         return None
     return datos
 
-
 def aFraccion(valor):
     """Convierte un valor leído (número JSON o texto) en un Fraction exacto.
-
-    Se usa Fraction en todo el modelo porque los datos del caso (4,2 años; pesos
-    0,25; costos) se pueden escribir con decimales y, con float, 0.1 + 0.2 no da
-    exactamente 0.3. Con Fraction las cuentas son exactas y no hacen falta
-    tolerancias. Los números JSON se convierten pasando por texto (str) para
-    que 0.25 sea exactamente 1/4. Acepta fracciones escritas como '3/4' y decimales con coma o punto ('0,5').
-
-    Parámetros:
-        valor (int | float | str): dato a convertir.
-    Devuelve:
-        Fraction | None: el número exacto, o None si no es un número válido
-        (texto cualquiera, True/False, nan, infinito).
+    Parámetros: valor (int | float | str): dato a convertir.
+    Devuelve: Fraction | None: el número exacto, o None si no es un número válido (texto cualquiera,
+      True/False, nan, infinito).
     """
     if isinstance(valor, bool):
         return None
@@ -186,19 +134,11 @@ def aFraccion(valor):
         return None
     return None
 
-
 def pedirEntero(mensaje, minimo, maximo):
     """Pide un entero por teclado y repite la pregunta hasta que sea válido.
-
-    Implementa la validación de datos del RNF-06 a RNF-08: ni un texto que no sea número
-    ni un valor fuera del rango [minimo, maximo] hacen caer el programa.
-
-    Parámetros:
-        mensaje (str): texto que se muestra al pedir el dato.
-        minimo (int): menor valor aceptado.
-        maximo (int): mayor valor aceptado.
-    Devuelve:
-        int: el valor ingresado, ya validado.
+    Parámetros: mensaje (str): texto que se muestra al pedir el dato; minimo (int): menor valor
+      aceptado; maximo (int): mayor valor aceptado.
+    Devuelve: int: el valor ingresado, ya validado.
     """
     valor = None
     while valor is None:
@@ -213,18 +153,11 @@ def pedirEntero(mensaje, minimo, maximo):
             print("  Debe ingresar un número entero.")
     return valor
 
-
 def pedirNumeros(mensaje, cantidad):
     """Pide una línea con exactamente 'cantidad' números y repite hasta que sea válida.
-
-    Acepta enteros, decimales con punto ('4.5') y fracciones ('9/2'). Cada número
-    se guarda como Fraction (exacto).
-
-    Parámetros:
-        mensaje (str): texto que se muestra al pedir el dato.
-        cantidad (int): cuántos números se esperan.
-    Devuelve:
-        list[Fraction]: los números ingresados, en el mismo orden.
+    Parámetros: mensaje (str): texto que se muestra al pedir el dato; cantidad (int): cuántos
+      números se esperan.
+    Devuelve: list[Fraction]: los números ingresados, en el mismo orden.
     """
     numeros = None
     while numeros is None:
@@ -242,33 +175,20 @@ def pedirNumeros(mensaje, cantidad):
             numeros = lista
     return numeros
 
-
 def pedirNombreArchivo(sugerido):
     """Pide el nombre de un archivo; con solo presionar Enter se usa el sugerido.
-
-    Parámetros:
-        sugerido (str): nombre por defecto (el del archivo de datos del caso).
-    Devuelve:
-        str: nombre escrito por el usuario, o el sugerido si lo dejó vacío.
+    Parámetros: sugerido (str): nombre por defecto (el del archivo de datos del caso).
+    Devuelve: str: nombre escrito por el usuario, o el sugerido si lo dejó vacío.
     """
     texto = input("Nombre del archivo (Enter = " + sugerido + "): ").strip()
     if texto == "":
         return sugerido
     return texto
 
-
 def formatearNumero(numero):
     """Devuelve un número como texto legible para mostrar resultados.
-
-    - Entero: sin decimales ('12').
-    - Decimal exacto de hasta 4 cifras: en decimal ('4.2').
-    - Cualquier otro caso (por ejemplo 1/3): como fracción más su aproximación
-      ('1/3 ≈ 0.3333'), para no ocultar que el resultado es exacto.
-
-    Parámetros:
-        numero (Fraction | int | float): valor a mostrar.
-    Devuelve:
-        str: el número como texto.
+    Parámetros: numero (Fraction | int | float): valor a mostrar.
+    Devuelve: str: el número como texto.
     """
     if isinstance(numero, float):
         if numero == infinito:
@@ -282,39 +202,22 @@ def formatearNumero(numero):
         return str(aproximado)
     return str(numero.numerator) + "/" + str(numero.denominator) + " ≈ " + str(aproximado)
 
-
 def textoOperando(numero):
     """Devuelve un número para escribirlo dentro de una operación entre filas.
-
-    Los enteros van tal cual ('5') y las fracciones entre paréntesis ('(5/3)'),
-    de modo que 'F2 <- F2 - (5/3) * F1' se lea sin ambigüedad.
-
-    Parámetros:
-        numero (Fraction): coeficiente de la operación.
-    Devuelve:
-        str: texto del coeficiente.
+    Parámetros: numero (Fraction): coeficiente de la operación.
+    Devuelve: str: texto del coeficiente.
     """
     if numero.denominator == 1:
         return str(numero.numerator)
     return "(" + str(numero.numerator) + "/" + str(numero.denominator) + ")"
 
-
-# -----------------------------------------------------------------------------
-# Funciones generales de matrices y tablas
-# -----------------------------------------------------------------------------
+# --- Funciones generales de matrices y tablas ---
 
 def crearMatriz(filas, columnas, valor):
     """Crea una matriz (lista de listas) de 'filas' x 'columnas' con el valor dado.
-
-    Se usa para la matriz ampliada de Gauss-Jordan, donde hace falta acceder por
-    posición ([fila][columna]).
-
-    Parámetros:
-        filas (int): cantidad de filas.
-        columnas (int): cantidad de columnas.
-        valor: valor inicial de todos los elementos.
-    Devuelve:
-        list[list]: la matriz creada.
+    Parámetros: filas (int): cantidad de filas; columnas (int): cantidad de columnas. valor: valor
+      inicial de todos los elementos.
+    Devuelve: list[list]: la matriz creada.
     """
     matriz = []
     for i in range(filas):
@@ -324,17 +227,10 @@ def crearMatriz(filas, columnas, valor):
         matriz.append(fila)
     return matriz
 
-
 def copiarMatriz(matriz):
     """Copia una matriz (lista de listas) elemento por elemento.
-
-    Hace falta porque 'copia = matriz' no duplica los datos: ambas variables
-    apuntarían a la misma lista y modificar una cambiaría la otra.
-
-    Parámetros:
-        matriz (list[list]): matriz original.
-    Devuelve:
-        list[list]: copia independiente.
+    Parámetros: matriz (list[list]): matriz original.
+    Devuelve: list[list]: copia independiente.
     """
     copia = []
     for fila in matriz:
@@ -344,21 +240,11 @@ def copiarMatriz(matriz):
         copia.append(nuevaFila)
     return copia
 
-
 def crearTabla(filas, columnas, valor):
     """Crea una tabla como diccionario de diccionarios: tabla[fila][columna] = valor.
-
-    Es la forma en que el programa guarda las matrices con nombre: se accede con
-    el código del módulo (tabla['PED']['CLI']) y no con una posición numérica, así
-    no se confunden filas con columnas. 'filas' y 'columnas' pueden ser distintas
-    (matriz rectangular, como la de incidencia solicitudes x módulos).
-
-    Parámetros:
-        filas (list[str]): nombres de las filas.
-        columnas (list[str]): nombres de las columnas.
-        valor: valor inicial de todas las celdas.
-    Devuelve:
-        dict: la tabla creada.
+    Parámetros: filas (list[str]): nombres de las filas; columnas (list[str]): nombres de las
+      columnas. valor: valor inicial de todas las celdas.
+    Devuelve: dict: la tabla creada.
     """
     tabla = {}
     for fila in filas:
@@ -367,27 +253,18 @@ def crearTabla(filas, columnas, valor):
             tabla[fila][columna] = valor
     return tabla
 
-
 def crearMatrizDiccionario(nombres, valor):
     """Crea una matriz cuadrada con nombres: matriz[origen][destino] = valor.
-
-    Parámetros:
-        nombres (list[str]): nombres de filas y de columnas (son los mismos).
-        valor: valor inicial.
-    Devuelve:
-        dict: matriz cuadrada.
+    Parámetros: nombres (list[str]): nombres de filas y de columnas (son los mismos). valor: valor
+      inicial.
+    Devuelve: dict: matriz cuadrada.
     """
     return crearTabla(nombres, nombres, valor)
 
-
 def copiarMatrizDiccionario(nombres, matriz):
     """Copia una matriz cuadrada hecha con diccionarios.
-
-    Parámetros:
-        nombres (list[str]): nombres de filas y columnas.
-        matriz (dict): matriz original.
-    Devuelve:
-        dict: copia independiente.
+    Parámetros: nombres (list[str]): nombres de filas y columnas; matriz (dict): matriz original.
+    Devuelve: dict: copia independiente.
     """
     copia = crearMatrizDiccionario(nombres, 0)
     for fila in nombres:
@@ -395,18 +272,11 @@ def copiarMatrizDiccionario(nombres, matriz):
             copia[fila][columna] = matriz[fila][columna]
     return copia
 
-
 def mostrarTabla(titulo, filas, columnas, tabla):
     """Muestra una tabla (matriz con nombres) alineada en columnas.
-
-    El ancho de columna se adapta al nombre más largo, de modo que también sirve
-    para códigos como 'EVT' o nombres de actividades.
-
-    Parámetros:
-        titulo (str): título que se imprime arriba.
-        filas (list[str]): nombres de las filas, en el orden en que se muestran.
-        columnas (list[str]): nombres de las columnas.
-        tabla (dict): tabla[fila][columna] con los valores.
+    Parámetros: titulo (str): título que se imprime arriba; filas (list[str]): nombres de las filas,
+      en el orden en que se muestran; columnas (list[str]): nombres de las columnas; tabla (dict):
+      tabla[fila][columna] con los valores.
     """
     ancho = 5
     for nombre in filas + columnas:
@@ -424,36 +294,24 @@ def mostrarTabla(titulo, filas, columnas, tabla):
             linea = linea + formatearNumero(tabla[fila][columna]).rjust(ancho)
         print(linea)
 
-
 def mostrarMatriz(titulo, nombres, matriz):
     """Muestra una matriz cuadrada con nombres (llama a mostrarTabla).
-
-    Parámetros:
-        titulo (str): título de la matriz.
-        nombres (list[str]): nombres de filas y columnas.
-        matriz (dict): matriz[fila][columna].
+    Parámetros: titulo (str): título de la matriz; nombres (list[str]): nombres de filas y columnas;
+      matriz (dict): matriz[fila][columna].
     """
     mostrarTabla(titulo, nombres, nombres, matriz)
 
-
 def multiplicarTablas(filas, medio, columnas, a, b, booleano):
-    """Producto de dos tablas (matrices con nombres), también rectangulares.
-
-    Modelo matemático: (A.B)(i,j) = suma sobre k de a(i,k) * b(k,j), donde i recorre
-    'filas', k recorre 'medio' y j recorre 'columnas'. Si 'booleano' es True se
-    calcula el producto booleano (A (.) B): el resultado es 1 si existe algún k con
-    a(i,k) = 1 y b(k,j) = 1, y 0 en caso contrario (composición de relaciones).
-
-    Parámetros:
-        filas (list[str]): nombres de las filas de A (y del resultado).
-        medio (list[str]): columnas de A = filas de B (índice k de la suma).
-        columnas (list[str]): nombres de las columnas de B (y del resultado).
-        a (dict): primera tabla, a[fila][k].
-        b (dict): segunda tabla, b[k][columna].
-        booleano (bool): True para el producto booleano, False para el común.
-    Devuelve:
-        dict: tabla resultado[fila][columna].
-    Complejidad: O(f * m * c) con f, m, c las cantidades de filas, medio y columnas.
+    """Producto de dos tablas (matrices con nombres), también rectangulares. Modelo matemático:
+      (A.B)(i,j) = suma sobre k de a(i,k) * b(k,j), donde i recorre 'filas', k recorre 'medio' y j
+      recorre 'columnas'. Si 'booleano' es True se calcula el producto booleano (A (.) B): el
+      resultado es 1 si existe algún k con a(i,k) = 1 y b(k,j) = 1, y 0 en caso contrario
+      (composición de relaciones). Parámetros: filas (list[str]): nombres de las filas de A (y del
+      resultado); medio (list[str]): columnas de A = filas de B (índice k de la suma); columnas
+      (list[str]): nombres de las columnas de B (y del resultado); a (dict): primera tabla,
+      a[fila][k]; b (dict): segunda tabla, b[k][columna]; booleano (bool): True para el producto
+      booleano, False para el común. Devuelve: dict: tabla resultado[fila][columna]. Complejidad:
+      O(f * m * c) con f, m, c las cantidades de filas, medio y columnas.
     """
     resultado = crearTabla(filas, columnas, 0)
     for i in filas:
@@ -466,29 +324,19 @@ def multiplicarTablas(filas, medio, columnas, a, b, booleano):
             resultado[i][j] = suma
     return resultado
 
-
 def multiplicarMatrices(modulos, a, b):
     """Producto común de dos matrices cuadradas con nombres (A.A cuenta caminos de largo 2).
-
-    Parámetros:
-        modulos (list[str]): nombres de filas y columnas.
-        a (dict): primera matriz.
-        b (dict): segunda matriz.
-    Devuelve:
-        dict: matriz producto.
+    Parámetros: modulos (list[str]): nombres de filas y columnas; a (dict): primera matriz; b
+      (dict): segunda matriz.
+    Devuelve: dict: matriz producto.
     """
     return multiplicarTablas(modulos, modulos, modulos, a, b, False)
 
-
 def transponerTabla(filas, columnas, tabla):
     """Devuelve la transpuesta de una tabla: resultado[columna][fila] = tabla[fila][columna].
-
-    Parámetros:
-        filas (list[str]): filas de la tabla original.
-        columnas (list[str]): columnas de la tabla original.
-        tabla (dict): tabla original.
-    Devuelve:
-        dict: tabla transpuesta (sus filas son 'columnas' y sus columnas son 'filas').
+    Parámetros: filas (list[str]): filas de la tabla original; columnas (list[str]): columnas de la
+      tabla original; tabla (dict): tabla original.
+    Devuelve: dict: tabla transpuesta (sus filas son 'columnas' y sus columnas son 'filas').
     """
     traspuesta = crearTabla(columnas, filas, 0)
     for i in filas:
@@ -496,19 +344,11 @@ def transponerTabla(filas, columnas, tabla):
             traspuesta[j][i] = tabla[i][j]
     return traspuesta
 
-
 def contarUnos(filas, columnas, tabla):
     """Suma todos los elementos de una tabla de ceros y unos (cuenta los unos).
-
-    En la matriz de alcanzabilidad A* es la cantidad de pares (i, j) alcanzables,
-    que se usa como indicador de acoplamiento antes y después de reestructurar.
-
-    Parámetros:
-        filas (list[str]): nombres de las filas.
-        columnas (list[str]): nombres de las columnas.
-        tabla (dict): tabla de ceros y unos.
-    Devuelve:
-        int: cantidad de unos.
+    Parámetros: filas (list[str]): nombres de las filas; columnas (list[str]): nombres de las
+      columnas; tabla (dict): tabla de ceros y unos.
+    Devuelve: int: cantidad de unos.
     """
     cantidad = 0
     for i in filas:
@@ -516,29 +356,16 @@ def contarUnos(filas, columnas, tabla):
             cantidad = cantidad + tabla[i][j]
     return cantidad
 
-
-# -----------------------------------------------------------------------------
-# Ordenamiento y búsqueda sobre listas de registros (diccionarios)
-# -----------------------------------------------------------------------------
+# --- Ordenamiento y búsqueda sobre listas de registros (diccionarios) ---
 
 def ordenarBurbuja(registros, clave, descendente):
     """Ordenamiento de burbuja (bubble sort) de una lista de registros.
-
-    Idea: en cada pasada se comparan los vecinos y se intercambian si están
-    desordenados; así el mayor (o menor) 'sube como una burbuja' hasta su lugar.
-    Si en una pasada no hubo ningún intercambio, la lista ya está ordenada y se
-    corta antes (mejora que hace casi lineal el caso de listas ya ordenadas).
-    Es ESTABLE: dos registros con igual valor conservan el orden en que estaban,
-    porque solo se intercambia con una comparación estricta (< o >).
-
-    Parámetros:
-        registros (list[dict]): lista a ordenar (no se modifica: se trabaja sobre una copia).
-        clave (str): campo del diccionario por el que se ordena (por ejemplo 'entrada').
-        descendente (bool): True para orden de mayor a menor.
-    Devuelve:
-        list[dict]: nueva lista ordenada.
-    Complejidad: O(n^2) en el peor caso; O(n) si ya está ordenada.
-    Ejemplo: con grados de entrada (2, 1, 4) y descendente=True devuelve (4, 2, 1).
+    Parámetros: registros (list[dict]): lista a ordenar (no se modifica: se trabaja sobre una
+      copia); clave (str): campo del diccionario por el que se ordena (por ejemplo 'entrada');
+      descendente (bool): True para orden de mayor a menor.
+    Devuelve: list[dict]: nueva lista ordenada.
+    Complejidad: O(n^2) en el peor caso; O(n) si ya está ordenada. Ejemplo: con grados de entrada
+      (2, 1, 4) y descendente=True devuelve (4, 2, 1).
     """
     lista = list(registros)
     cantidad = len(lista)
@@ -560,22 +387,12 @@ def ordenarBurbuja(registros, clave, descendente):
         pasada = pasada + 1
     return lista
 
-
 def ordenarSeleccion(registros, clave, descendente):
     """Ordenamiento por selección (selection sort) de una lista de registros.
-
-    Idea: en el paso i se busca el menor (o mayor, si es descendente) de los
-    registros que todavía no están ordenados y se intercambia con el de la
-    posición i. Hace como máximo n - 1 intercambios, por eso conviene cuando
-    mover registros es costoso. No es estable (el intercambio a distancia puede
-    cambiar el orden relativo de empates).
-
-    Parámetros:
-        registros (list[dict]): lista a ordenar (no se modifica: se trabaja sobre una copia).
-        clave (str): campo por el que se ordena.
-        descendente (bool): True para orden de mayor a menor.
-    Devuelve:
-        list[dict]: nueva lista ordenada.
+    Parámetros: registros (list[dict]): lista a ordenar (no se modifica: se trabaja sobre una
+      copia); clave (str): campo por el que se ordena; descendente (bool): True para orden de mayor
+      a menor.
+    Devuelve: list[dict]: nueva lista ordenada.
     Complejidad: O(n^2) comparaciones siempre; O(n) intercambios.
     """
     lista = list(registros)
@@ -595,21 +412,11 @@ def ordenarSeleccion(registros, clave, descendente):
             lista[posExtremo] = auxiliar
     return lista
 
-
 def busquedaSecuencial(registros, clave, valor):
     """Búsqueda secuencial (lineal) de un valor en una lista de registros.
-
-    Recorre desde el principio hasta encontrar un registro cuyo campo 'clave' sea
-    igual a 'valor'. Funciona con la lista en cualquier orden; por eso se usa para
-    hallar el puesto de un módulo dentro de un ranking (ordenado por grado y no
-    por código).
-
-    Parámetros:
-        registros (list[dict]): lista donde buscar.
-        clave (str): campo que se compara.
-        valor: valor buscado.
-    Devuelve:
-        int: posición (desde 0) del primer registro que coincide, o -1 si no está.
+    Parámetros: registros (list[dict]): lista donde buscar; clave (str): campo que se compara.
+      valor: valor buscado.
+    Devuelve: int: posición (desde 0) del primer registro que coincide, o -1 si no está.
     Complejidad: O(n).
     """
     posicion = 0
@@ -619,23 +426,13 @@ def busquedaSecuencial(registros, clave, valor):
         posicion = posicion + 1
     return -1
 
-
 def busquedaBinaria(registros, clave, valor):
     """Búsqueda binaria (dicotómica) de un valor en una lista ORDENADA de menor a mayor.
-
-    En cada paso compara con el registro del medio: si coincide, termina; si el del
-    medio es menor que el buscado, descarta la mitad izquierda; si es mayor,
-    descarta la derecha. Si la lista no estuviera ordenada podría descartar justo
-    la mitad donde está el valor, por eso antes se ordena por la clave de búsqueda.
-
-    Parámetros:
-        registros (list[dict]): lista ordenada de menor a mayor por 'clave'.
-        clave (str): campo que se compara.
-        valor: valor buscado.
-    Devuelve:
-        int: posición (desde 0) del registro, o -1 si no está.
-    Complejidad: O(log n).
-    Ejemplo: en 9 módulos ordenados por código se necesitan a lo sumo 4 comparaciones.
+    Parámetros: registros (list[dict]): lista ordenada de menor a mayor por 'clave'; clave (str):
+      campo que se compara. valor: valor buscado.
+    Devuelve: int: posición (desde 0) del registro, o -1 si no está.
+    Complejidad: O(log n). Ejemplo: en 9 módulos ordenados por código se necesitan a lo sumo 4
+      comparaciones.
     """
     bajo = 0
     alto = len(registros) - 1
@@ -649,26 +446,17 @@ def busquedaBinaria(registros, clave, valor):
             alto = medio - 1
     return -1
 
-
-# -----------------------------------------------------------------------------
-# RF-01 a RF-06 - Cargar los módulos y la matriz de adyacencia
-# -----------------------------------------------------------------------------
+# --- RF-01 a RF-06 - Cargar los módulos y la matriz de adyacencia ---
 
 def armarSistema(modulos, dependencias):
-    """Valida los datos y arma el sistema (digrafo) de módulos.
-
-    Modelo matemático: digrafo G = (V, E) con V = módulos y matriz de adyacencia A
-    tal que A[i][j] = 1 si el módulo i depende del módulo j (convención de la
-    consigna). Valida: entre 1 y maxModulos módulos; códigos de texto, no vacíos y
-    sin repetir; cada dependencia nombra un módulo existente.
-
-    Parámetros:
-        modulos (list[str]): códigos de los módulos, en el orden de la convención.
-        dependencias (dict): {módulo: [módulos de los que depende]}.
-    Devuelve:
-        dict | None: {'modulos': lista, 'adyacencia': matriz} o None (con mensaje)
-        si algún dato no es válido.
-    Complejidad: O(n^2) por crear la matriz.
+    """Valida los datos y arma el sistema (digrafo) de módulos. Modelo matemático: digrafo G = (V, E)
+      con V = módulos y matriz de adyacencia A tal que A[i][j] = 1 si el módulo i depende del módulo
+      j (convención de la consigna). Valida: entre 1 y maxModulos módulos; códigos de texto, no
+      vacíos y sin repetir; cada dependencia nombra un módulo existente. Parámetros: modulos
+      (list[str]): códigos de los módulos, en el orden de la convención; dependencias (dict):
+      {módulo: [módulos de los que depende]}. Devuelve: dict | None: {'modulos': lista,
+      'adyacencia': matriz} o None (con mensaje) si algún dato no es válido. Complejidad: O(n^2) por
+      crear la matriz.
     """
     if not isinstance(modulos, list) or len(modulos) < 1 or len(modulos) > maxModulos:
         print("Error: el sistema debe tener entre 1 y", maxModulos, "módulos.")
@@ -700,18 +488,10 @@ def armarSistema(modulos, dependencias):
             adyacencia[modulo][destino] = 1
     return {"modulos": modulos, "adyacencia": adyacencia}
 
-
 def cargarModulosArchivo(nombreArchivo):
     """RF-01, RF-03 a RF-06. Carga el sistema de módulos desde un archivo JSON.
-
-    Formato esperado:
-        {"modulos": ["PED", "CLI", ...],
-         "dependencias": {"PED": ["CLI", "INV", "ASG"], "CLI": [], ...}}
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        dict | None: el sistema (ver armarSistema) o None si hubo un error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: dict | None: el sistema (ver armarSistema) o None si hubo un error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -721,16 +501,9 @@ def cargarModulosArchivo(nombreArchivo):
         return None
     return armarSistema(datos["modulos"], datos["dependencias"])
 
-
 def cargarModulosTeclado():
     """RF-02 a RF-05. Pide los módulos y sus dependencias por teclado.
-
-    Primero la cantidad (1 a maxModulos), después el código de cada módulo (se
-    pasa a mayúsculas y no puede repetirse) y por último, para cada módulo, de qué
-    módulos depende. Los códigos de dependencia que no existen se ignoran con aviso.
-
-    Devuelve:
-        dict | None: el sistema (ver armarSistema).
+    Devuelve: dict | None: el sistema (ver armarSistema).
     """
     cantidad = pedirEntero("Cantidad de módulos (1 a " + str(maxModulos) + "): ", 1, maxModulos)
     modulos = []
@@ -753,24 +526,15 @@ def cargarModulosTeclado():
                 print("  El módulo", codigo, "no existe, se ignora.")
     return armarSistema(modulos, dependencias)
 
-
-# -----------------------------------------------------------------------------
-# RF-07 a RF-13 - Grados de entrada y de salida
-# -----------------------------------------------------------------------------
+# --- RF-07 a RF-13 - Grados de entrada y de salida ---
 
 def calcularGrados(sistema):
-    """Calcula los grados de entrada y de salida de cada módulo.
-
-    Modelo matemático: grado de salida de i = suma de la fila i de A (de cuántos
-    módulos depende i: acoplamiento). Grado de entrada de j = suma de la columna j
-    de A (cuántos módulos dependen de j: criticidad). La suma de todos los grados de
-    entrada es igual a la de salida y a la cantidad de arcos |E|.
-
-    Parámetros:
-        sistema (dict): sistema armado por armarSistema.
-    Devuelve:
-        tuple[dict, dict]: (entrada, salida), cada uno {módulo: grado}.
-    Complejidad: O(n^2).
+    """Calcula los grados de entrada y de salida de cada módulo. Modelo matemático: grado de salida de
+      i = suma de la fila i de A (de cuántos módulos depende i: acoplamiento). Grado de entrada de j
+      = suma de la columna j de A (cuántos módulos dependen de j: criticidad). La suma de todos los
+      grados de entrada es igual a la de salida y a la cantidad de arcos |E|. Parámetros: sistema
+      (dict): sistema armado por armarSistema. Devuelve: tuple[dict, dict]: (entrada, salida), cada
+      uno {módulo: grado}. Complejidad: O(n^2).
     """
     modulos = sistema["modulos"]
     adyacencia = sistema["adyacencia"]
@@ -786,19 +550,12 @@ def calcularGrados(sistema):
         entrada[i] = sumaColumna
     return entrada, salida
 
-
 def armarFichas(sistema, alcance):
     """Arma una ficha (diccionario) por módulo: código, grados y módulos afectados.
-
-    Las fichas son los registros que después se ordenan (burbuja, selección) y se
-    buscan (secuencial, binaria). Evita recalcular los grados en cada consulta.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz de alcanzabilidad A* (ver warshall).
-    Devuelve:
-        list[dict]: una ficha {'modulo', 'entrada', 'salida', 'afectados'} por módulo,
-        en el orden de la convención.
+    Parámetros: sistema (dict): sistema de módulos; alcance (dict): matriz de alcanzabilidad A* (ver
+      warshall).
+    Devuelve: list[dict]: una ficha {'modulo', 'entrada', 'salida', 'afectados'} por módulo, en el
+      orden de la convención.
     """
     entrada, salida = calcularGrados(sistema)
     fichas = []
@@ -810,15 +567,11 @@ def armarFichas(sistema, alcance):
         fichas.append(ficha)
     return fichas
 
-
 def codigosEmpatados(ranking, clave):
     """Devuelve los códigos que están primeros en un ranking, contando los empates.
-
-    Parámetros:
-        ranking (list[dict]): fichas ya ordenadas de mayor a menor (o de menor a mayor).
-        clave (str): campo del ranking ('entrada' o 'salida').
-    Devuelve:
-        list[str]: códigos de los módulos cuyo valor de 'clave' es igual al del primero.
+    Parámetros: ranking (list[dict]): fichas ya ordenadas de mayor a menor (o de menor a mayor);
+      clave (str): campo del ranking ('entrada' o 'salida').
+    Devuelve: list[str]: códigos de los módulos cuyo valor de 'clave' es igual al del primero.
     """
     codigos = []
     posicion = 0
@@ -827,18 +580,9 @@ def codigosEmpatados(ranking, clave):
         posicion = posicion + 1
     return codigos
 
-
 def mostrarGrados(sistema, alcance):
     """RF-07 a RF-13. Muestra los grados de cada módulo y dos rankings.
-
-    Ranking de criticidad: módulos ordenados por grado de entrada (burbuja).
-    Ranking de acoplamiento: módulos ordenados por grado de salida (selección).
-    Informa el más crítico, el más acoplado y los módulos con grado de entrada 0
-    (los que se podrían eliminar sin afectar a ningún otro).
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz de alcanzabilidad A*.
+    Parámetros: sistema (dict): sistema de módulos; alcance (dict): matriz de alcanzabilidad A*.
     """
     fichas = armarFichas(sistema, alcance)
     print()
@@ -847,14 +591,8 @@ def mostrarGrados(sistema, alcance):
         print(" ", ficha["modulo"], "-> entrada:", ficha["entrada"], " salida:", ficha["salida"])
     rankingCriticos = ordenarBurbuja(fichas, "entrada", True)
     rankingAcoplados = ordenarSeleccion(fichas, "salida", True)
-    print("Ranking de criticidad (grado de entrada, burbuja):", end=" ")
-    for ficha in rankingCriticos:
-        print(ficha["modulo"] + "(" + str(ficha["entrada"]) + ")", end=" ")
-    print()
-    print("Ranking de acoplamiento (grado de salida, selección):", end=" ")
-    for ficha in rankingAcoplados:
-        print(ficha["modulo"] + "(" + str(ficha["salida"]) + ")", end=" ")
-    print()
+    print("Ranking de criticidad (grado de entrada, burbuja):", " ".join(f["modulo"] + "(" + str(f["entrada"]) + ")" for f in rankingCriticos), "")
+    print("Ranking de acoplamiento (grado de salida, selección):", " ".join(f["modulo"] + "(" + str(f["salida"]) + ")" for f in rankingAcoplados), "")
     print("Más crítico (mayor grado de entrada):", codigosEmpatados(rankingCriticos, "entrada"))
     print("Más acoplado (mayor grado de salida):", codigosEmpatados(rankingAcoplados, "salida"))
     rankingMenores = ordenarBurbuja(fichas, "entrada", False)
@@ -864,27 +602,18 @@ def mostrarGrados(sistema, alcance):
     else:
         print("ninguno")
 
-
-# -----------------------------------------------------------------------------
-# RF-14 a RF-16 - Matriz de alcanzabilidad (Warshall) y módulos afectados
-# -----------------------------------------------------------------------------
+# --- RF-14 a RF-16 - Matriz de alcanzabilidad (Warshall) y módulos afectados ---
 
 def warshall(sistema):
-    """Calcula la matriz de alcanzabilidad A* (cierre transitivo) con el algoritmo de Warshall.
-
-    Modelo matemático: A*[i][j] = 1 si existe un camino de longitud >= 1 de i a j.
-    En la etapa k se considera a k como intermediario permitido: si i llega a k y k
-    llega a j, entonces i llega a j. Al terminar la etapa k se conocen todos los
-    caminos cuyos intermedios están entre los primeros k módulos; al terminar la
-    última, todos los caminos. Equivale a la suma booleana A v A^2 v ... v A^n.
-    Optimización: si i no llega a k se omite el recorrido de j (no puede aportar).
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-    Devuelve:
-        dict: matriz A* (diccionario de diccionarios de 0 y 1). La diagonal vale 1
-        exactamente en los módulos que están en un ciclo.
-    Complejidad: O(n^3) en el peor caso.
+    """Calcula la matriz de alcanzabilidad A* (cierre transitivo) con el algoritmo de Warshall. Modelo
+      matemático: A*[i][j] = 1 si existe un camino de longitud >= 1 de i a j. En la etapa k se
+      considera a k como intermediario permitido: si i llega a k y k llega a j, entonces i llega a
+      j. Al terminar la etapa k se conocen todos los caminos cuyos intermedios están entre los
+      primeros k módulos; al terminar la última, todos los caminos. Equivale a la suma booleana A v
+      A^2 v ... v A^n. Optimización: si i no llega a k se omite el recorrido de j (no puede
+      aportar). Parámetros: sistema (dict): sistema de módulos. Devuelve: dict: matriz A*
+      (diccionario de diccionarios de 0 y 1). La diagonal vale 1 exactamente en los módulos que
+      están en un ciclo. Complejidad: O(n^3) en el peor caso.
     """
     modulos = sistema["modulos"]
     alcance = copiarMatrizDiccionario(modulos, sistema["adyacencia"])
@@ -896,20 +625,12 @@ def warshall(sistema):
                         alcance[i][j] = 1
     return alcance
 
-
 def modulosAfectados(sistema, alcance, codigo):
-    """Lectura por columna de A*: módulos que pueden verse afectados si se modifica 'codigo'.
-
-    Modelo matemático: A*[i][j] = 1 significa que i depende (directa o
-    indirectamente) de j; por lo tanto un cambio en j puede afectar a todo i
-    con A*[i][j] = 1. Es la columna j de A*.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz A*.
-        codigo (str): módulo que se modifica.
-    Devuelve:
-        list[str]: módulos afectados, en el orden de la convención.
+    """Lectura por columna de A*: módulos que pueden verse afectados si se modifica 'codigo'. Modelo
+      matemático: A*[i][j] = 1 significa que i depende (directa o indirectamente) de j; por lo tanto
+      un cambio en j puede afectar a todo i con A*[i][j] = 1. Es la columna j de A*. Parámetros:
+      sistema (dict): sistema de módulos; alcance (dict): matriz A*; codigo (str): módulo que se
+      modifica. Devuelve: list[str]: módulos afectados, en el orden de la convención.
     """
     afectados = []
     for i in sistema["modulos"]:
@@ -917,18 +638,9 @@ def modulosAfectados(sistema, alcance, codigo):
             afectados.append(i)
     return afectados
 
-
 def mostrarAfectados(sistema, alcance):
     """RF-14 a RF-16. Pide uno o más módulos y muestra el alcance directo y el impacto según A*.
-
-    Alcance directo = cuántos módulos se tocan; impacto = cuántos pueden verse
-    afectados en total (unión de las columnas de A*). La diferencia explica los
-    'efectos inesperados' del caso. Los códigos se validan con búsqueda binaria
-    sobre las fichas ordenadas por código.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz A*.
+    Parámetros: sistema (dict): sistema de módulos; alcance (dict): matriz A*.
     """
     fichasOrdenadas = ordenarSeleccion(armarFichas(sistema, alcance), "modulo", False)
     texto = input("Módulos que se modifican (separados por espacio): ").upper()
@@ -949,22 +661,14 @@ def mostrarAfectados(sistema, alcance):
     print("Alcance directo:", len(cambiados), "módulo(s)")
     print("Impacto según A*:", len(lista), "módulo(s):", lista)
 
-
-# -----------------------------------------------------------------------------
-# RF-17 a RF-19 - Dependencias circulares
-# -----------------------------------------------------------------------------
+# --- RF-17 a RF-19 - Dependencias circulares ---
 
 def modulosEnCiclos(sistema, alcance):
-    """RF-17 a RF-19. Devuelve los módulos que están en un ciclo (diagonal de A* igual a 1).
-
-    Modelo matemático: A*[i][i] = 1 si y solo si hay un camino que sale de i y
-    vuelve a i, es decir, i está en un ciclo (dependencia circular).
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz A*.
-    Devuelve:
-        list[str]: módulos con A*[i][i] = 1, en el orden de la convención.
+    """RF-17 a RF-19. Devuelve los módulos que están en un ciclo (diagonal de A* igual a 1). Modelo
+      matemático: A*[i][i] = 1 si y solo si hay un camino que sale de i y vuelve a i, es decir, i
+      está en un ciclo (dependencia circular). Parámetros: sistema (dict): sistema de módulos;
+      alcance (dict): matriz A*. Devuelve: list[str]: módulos con A*[i][i] = 1, en el orden de la
+      convención.
     """
     enCiclo = []
     for i in sistema["modulos"]:
@@ -972,20 +676,13 @@ def modulosEnCiclos(sistema, alcance):
             enCiclo.append(i)
     return enCiclo
 
-
 def gruposDeCiclos(sistema, alcance):
-    """Agrupa los módulos que están en el mismo ciclo (componentes fuertemente conexas).
-
-    Modelo matemático: i y j están en la misma componente fuertemente conexa si
-    A*[i][j] = 1 y A*[j][i] = 1 (se alcanzan mutuamente). 'Se alcanzan mutuamente'
-    es una relación de equivalencia y sus clases son las componentes. Solo se
-    informan las que contienen un ciclo (diagonal en 1).
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz A*.
-    Devuelve:
-        list[list[str]]: un grupo (lista de códigos) por cada ciclo independiente.
+    """Agrupa los módulos que están en el mismo ciclo (componentes fuertemente conexas). Modelo
+      matemático: i y j están en la misma componente fuertemente conexa si A*[i][j] = 1 y A*[j][i] =
+      1 (se alcanzan mutuamente). 'Se alcanzan mutuamente' es una relación de equivalencia y sus
+      clases son las componentes. Solo se informan las que contienen un ciclo (diagonal en 1).
+      Parámetros: sistema (dict): sistema de módulos; alcance (dict): matriz A*. Devuelve:
+      list[list[str]]: un grupo (lista de códigos) por cada ciclo independiente.
     """
     modulos = sistema["modulos"]
     grupos = []
@@ -1000,26 +697,17 @@ def gruposDeCiclos(sistema, alcance):
             grupos.append(grupo)
     return grupos
 
-
-# -----------------------------------------------------------------------------
-# RF-35 y RF-36 - Orden de migración (orden topológico)
-# -----------------------------------------------------------------------------
+# --- RF-35 y RF-36 - Orden de migración (orden topológico) ---
 
 def ordenDeMigracion(sistema):
-    """RF-35 y RF-36. Propone un orden de migración: cada módulo después de los que necesita.
-
-    Modelo matemático: orden topológico inverso del digrafo. Como A[i][j] = 1
-    significa 'i depende de j', j debe migrarse antes que i. Algoritmo: se lleva la
-    cuenta de dependencias pendientes de cada módulo (su grado de salida); se
-    migra uno con 0 pendientes y se descuenta una a quienes dependían de él. Si en
-    algún momento no hay ninguno con 0 pendientes, todos los que quedan esperan a
-    otro que queda: hay un ciclo y el orden no existe.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-    Devuelve:
-        list[str]: orden de migración; lista vacía si el grafo tiene ciclos.
-    Complejidad: O(n^2).
+    """RF-35 y RF-36. Propone un orden de migración: cada módulo después de los que necesita. Modelo
+      matemático: orden topológico inverso del digrafo. Como A[i][j] = 1 significa 'i depende de j',
+      j debe migrarse antes que i. Algoritmo: se lleva la cuenta de dependencias pendientes de cada
+      módulo (su grado de salida); se migra uno con 0 pendientes y se descuenta una a quienes
+      dependían de él. Si en algún momento no hay ninguno con 0 pendientes, todos los que quedan
+      esperan a otro que queda: hay un ciclo y el orden no existe. Parámetros: sistema (dict):
+      sistema de módulos. Devuelve: list[str]: orden de migración; lista vacía si el grafo tiene
+      ciclos. Complejidad: O(n^2).
     """
     modulos = sistema["modulos"]
     adyacencia = sistema["adyacencia"]
@@ -1044,38 +732,20 @@ def ordenDeMigracion(sistema):
                 pendientes[modulo] = pendientes[modulo] - 1
     return orden
 
-
-# -----------------------------------------------------------------------------
-# Análisis completo y consulta de un módulo
-# -----------------------------------------------------------------------------
+# --- Análisis completo y consulta de un módulo ---
 
 def densidadDeAlcance(sistema, alcance):
     """Indicador de acoplamiento normalizado: porcentaje de unos de A* sobre n^2.
-
-    Comparar solo la cantidad de pares alcanzables no es justo si el sistema
-    reestructurado tiene más módulos (como G' con EVT: 10 en lugar de 9). Dividir
-    por n^2 permite comparar sistemas de distinto tamaño.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
-        alcance (dict): matriz A*.
-    Devuelve:
-        float: porcentaje (0 a 100) redondeado a un decimal.
+    Parámetros: sistema (dict): sistema de módulos; alcance (dict): matriz A*.
+    Devuelve: float: porcentaje (0 a 100) redondeado a un decimal.
     """
     modulos = sistema["modulos"]
     unos = contarUnos(modulos, modulos, alcance)
     return round(100 * unos / (len(modulos) * len(modulos)), 1)
 
-
 def analizarSistema(sistema):
     """Corre RF-07 a RF-19, RF-35 y RF-36 sobre el digrafo cargado y muestra los resultados.
-
-    Muestra: matriz A, grados y rankings, A^2 (dependencias indirectas de largo 2),
-    A*, módulos afectados por cada módulo, cantidad y densidad de pares alcanzables,
-    ciclos (o 'acíclico') y orden de migración.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
+    Parámetros: sistema (dict): sistema de módulos.
     """
     modulos = sistema["modulos"]
     mostrarMatriz("Matriz de adyacencia A", modulos, sistema["adyacencia"])
@@ -1099,17 +769,9 @@ def analizarSistema(sistema):
         print("Grupos de módulos en el mismo ciclo:", gruposDeCiclos(sistema, alcance))
         print("Orden de migración: no existe porque hay ciclos.")
 
-
 def consultarModulo(sistema):
-    """RF-37 a RF-41. Muestra la ficha de un módulo que elige el usuario.
-
-    Localiza el módulo con búsqueda binaria sobre las fichas ordenadas por código y
-    después busca su puesto en cada ranking con búsqueda secuencial (los rankings
-    están ordenados por grado, no por código). Informa grados, puestos, módulos
-    afectados y si está en una dependencia circular.
-
-    Parámetros:
-        sistema (dict): sistema de módulos.
+    """RF-37 a RF-41 y RF-63. Muestra la ficha de un módulo que elige el usuario.
+    Parámetros: sistema (dict): sistema de módulos.
     """
     alcance = warshall(sistema)
     fichas = armarFichas(sistema, alcance)
@@ -1133,25 +795,13 @@ def consultarModulo(sistema):
     else:
         print("  No está en ninguna dependencia circular.")
 
-
-# -----------------------------------------------------------------------------
-# RF-20 a RF-25 - Sistemas de ecuaciones lineales (hasta 5 x 5), aritmética exacta
-# -----------------------------------------------------------------------------
+# --- RF-20 a RF-25 - Sistemas de ecuaciones lineales (hasta 5 x 5), aritmética exacta ---
 
 def cargarSistemaArchivo(nombreArchivo):
     """RF-20. Carga un sistema de ecuaciones desde un archivo JSON.
-
-    Formato esperado (cada paquete es una ecuación):
-        {"paquetes": [{"coeficientes": [2, 3, 1], "precio": 119}, ...]}
-    Valida que haya entre 1 y maxIncognitas ecuaciones, que cada una tenga tantos
-    coeficientes como ecuaciones (sistema cuadrado) y que todos los valores sean
-    números.
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        list[list[Fraction]] | None: matriz ampliada (M | B) de n filas y n + 1
-        columnas, o None si hubo un error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: list[list[Fraction]] | None: matriz ampliada (M | B) de n filas y n + 1 columnas, o
+      None si hubo un error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -1182,16 +832,9 @@ def cargarSistemaArchivo(nombreArchivo):
         ampliada.append(fila)
     return ampliada
 
-
 def cargarSistemaTeclado():
     """RF-21. Pide la cantidad de incógnitas y cada ecuación en una línea.
-
-    Cada línea lleva los coeficientes y, al final, el término independiente. Se
-    aceptan enteros, decimales y fracciones; se repite el pedido si faltan o
-    sobran números.
-
-    Devuelve:
-        list[list[Fraction]]: matriz ampliada (M | B).
+    Devuelve: list[list[Fraction]]: matriz ampliada (M | B).
     """
     cantidad = pedirEntero("Cantidad de incógnitas (1 a " + str(maxIncognitas) + "): ", 1, maxIncognitas)
     ampliada = []
@@ -1200,21 +843,14 @@ def cargarSistemaTeclado():
                                      + " coeficientes y el término independiente): ", cantidad + 1))
     return ampliada
 
-
 def determinante(ampliada):
-    """Calcula det(M), donde M es la matriz ampliada sin su última columna.
-
-    Modelo matemático: se triangula una copia de M con operaciones entre filas.
-    Sumar a una fila un múltiplo de otra no cambia el determinante; intercambiar
-    dos filas lo multiplica por -1; el determinante de una matriz triangular es
-    el producto de su diagonal. Con Fraction el resultado es exacto: det = 0 solo si
-    realmente es cero (no hace falta ninguna tolerancia).
-
-    Parámetros:
-        ampliada (list[list[Fraction]]): matriz ampliada (M | B).
-    Devuelve:
-        Fraction: determinante de M.
-    Complejidad: O(n^3).
+    """Calcula det(M), donde M es la matriz ampliada sin su última columna. Modelo matemático: se
+      triangula una copia de M con operaciones entre filas. Sumar a una fila un múltiplo de otra no
+      cambia el determinante; intercambiar dos filas lo multiplica por -1; el determinante de una
+      matriz triangular es el producto de su diagonal. Con Fraction el resultado es exacto: det = 0
+      solo si realmente es cero (no hace falta ninguna tolerancia). Parámetros: ampliada
+      (list[list[Fraction]]): matriz ampliada (M | B). Devuelve: Fraction: determinante de M.
+      Complejidad: O(n^3).
     """
     n = len(ampliada)
     m = crearMatriz(n, n, Fraction(0))
@@ -1239,21 +875,11 @@ def determinante(ampliada):
                 m[f][k] = m[f][k] - factor * m[c][k]
     return det
 
-
 def elegirPivote(m, fila, columna):
     """Elige la fila del pivote para una columna, mirando de 'fila' hacia abajo.
-
-    Criterio: prefiere un valor de módulo 1 (se evitan las fracciones, igual que
-    cuando se resuelve a mano); si no hay, toma el primer valor distinto de cero.
-    Este criterio hace que los pasos del programa coincidan con los del Anexo de
-    resolución manual (por ejemplo, empieza con F1 <-> F2 en la Tabla 6).
-
-    Parámetros:
-        m (list[list[Fraction]]): matriz de trabajo.
-        fila (int): primera fila candidata (las anteriores ya tienen su pivote).
-        columna (int): columna que se está reduciendo.
-    Devuelve:
-        int: índice de la fila elegida, o -1 si toda la columna es cero desde 'fila'.
+    Parámetros: m (list[list[Fraction]]): matriz de trabajo; fila (int): primera fila candidata (las
+      anteriores ya tienen su pivote); columna (int): columna que se está reduciendo.
+    Devuelve: int: índice de la fila elegida, o -1 si toda la columna es cero desde 'fila'.
     """
     n = len(m)
     primero = -1
@@ -1268,26 +894,17 @@ def elegirPivote(m, fila, columna):
         return conUno
     return primero
 
-
 def gaussJordan(ampliada, mostrarPasos):
-    """Método del pivote (Gauss-Jordan) con aritmética exacta.
-
-    Modelo matemático: para cada columna c se elige un pivote, se lleva a 1
-    dividiendo su fila y se hacen ceros en el resto de la columna (arriba y
-    abajo). Las operaciones elementales no cambian el conjunto de soluciones. Al
-    final la matriz queda en forma escalonada reducida. Se clasifica con el
-    teorema de Rouché-Frobenius comparando rg(M) y rg(M|B) (filas no nulas):
-      - rg(M) < rg(M|B)        -> incompatible (sin solución)
-      - rg(M) = rg(M|B) < n    -> compatible indeterminado (infinitas soluciones)
-      - rg(M) = rg(M|B) = n    -> compatible determinado (solución única)
-
-    Parámetros:
-        ampliada (list[list[Fraction]]): matriz ampliada (M | B); no se modifica.
-        mostrarPasos (bool): True para imprimir cada operación entre filas.
-    Devuelve:
-        tuple[str, list[Fraction]]: (clasificación, solución). La solución es la
-        lista (x1, ..., xn) si es compatible determinado; vacía en otro caso.
-    Complejidad: O(n^3).
+    """Método del pivote (Gauss-Jordan) con aritmética exacta. Modelo matemático: para cada columna c
+      se elige un pivote, se lleva a 1 dividiendo su fila y se hacen ceros en el resto de la columna
+      (arriba y abajo). Las operaciones elementales no cambian el conjunto de soluciones. Al final
+      la matriz queda en forma escalonada reducida. Se clasifica con el teorema de Rouché-Frobenius
+      comparando rg(M) y rg(M|B) (filas no nulas): - rg(M) < rg(M|B) -> incompatible (sin solución)
+      - rg(M) = rg(M|B) < n -> compatible indeterminado (infinitas soluciones) - rg(M) = rg(M|B) = n
+      -> compatible determinado (solución única) Parámetros: ampliada (list[list[Fraction]]): matriz
+      ampliada (M | B); no se modifica; mostrarPasos (bool): True para imprimir cada operación entre
+      filas. Devuelve: tuple[str, list[Fraction]]: (clasificación, solución). La solución es la
+      lista (x1, ..., xn) si es compatible determinado; vacía en otro caso. Complejidad: O(n^3).
     """
     n = len(ampliada)
     m = copiarMatriz(ampliada)
@@ -1314,25 +931,15 @@ def gaussJordan(ampliada, mostrarPasos):
                     for k in range(n + 1):
                         m[f][k] = m[f][k] - factor * m[fila][k]
                     if mostrarPasos:
-                        if factor > 0:
-                            signo = "-"
-                        else:
-                            signo = "+"
-                        if abs(factor) == 1:
-                            producto = "F" + str(fila + 1)
-                        else:
-                            producto = textoOperando(abs(factor)) + " * F" + str(fila + 1)
+                        signo = "-" if factor > 0 else "+"
+                        producto = "F" + str(fila + 1) if abs(factor) == 1 else textoOperando(abs(factor)) + " * F" + str(fila + 1)
                         print("  F" + str(f + 1), "<- F" + str(f + 1), signo, producto)
             fila = fila + 1
     # Clasificación: se cuentan las filas no nulas de M (rango de M) y de (M | B).
     rangoM = 0
     rangoAmpliada = 0
     for f in range(n):
-        filaNulaM = True
-        for k in range(n):
-            if m[f][k] != 0:
-                filaNulaM = False
-        if not filaNulaM:
+        if any(m[f][k] != 0 for k in range(n)):
             rangoM = rangoM + 1
             rangoAmpliada = rangoAmpliada + 1
         elif m[f][n] != 0:
@@ -1341,22 +948,11 @@ def gaussJordan(ampliada, mostrarPasos):
         return "incompatible", []
     if rangoM < n:
         return "compatible indeterminado", []
-    solucion = []
-    for f in range(n):
-        solucion.append(m[f][n])
-    return "compatible determinado", solucion
-
+    return "compatible determinado", [m[f][n] for f in range(n)]
 
 def resolverSistema(ampliada):
     """RF-22 a RF-25. Muestra determinante, pasos del pivote, clasificación y verificación.
-
-    Si el sistema es compatible determinado, verifica la solución por sustitución
-    (cada ecuación debe dar exactamente su término independiente) y permite
-    calcular un costo como producto escalar entre un vector de cantidades y el
-    vector solución (por ejemplo, el costo inicial I_B de la alternativa B).
-
-    Parámetros:
-        ampliada (list[list[Fraction]]): matriz ampliada (M | B).
+    Parámetros: ampliada (list[list[Fraction]]): matriz ampliada (M | B).
     """
     print("det(M) =", formatearNumero(determinante(ampliada)))
     clasificacion, solucion = gaussJordan(ampliada, True)
@@ -1385,22 +981,12 @@ def resolverSistema(ampliada):
                     total = total + cantidades[i] * solucion[i]
                 print("Costo = vector de cantidades · vector solución =", formatearNumero(total))
 
-
-# -----------------------------------------------------------------------------
-# RF-26 a RF-30 - Punto de equilibrio entre dos alternativas de costo lineal
-# -----------------------------------------------------------------------------
+# --- RF-26 a RF-30 - Punto de equilibrio entre dos alternativas de costo lineal ---
 
 def cargarCostosArchivo(nombreArchivo):
     """RF-26. Carga las alternativas de costo desde un archivo JSON.
-
-    Formato esperado:
-        {"alternativas": {"A": {"fijo": 0, "anual": 110}, "B": {...}, ...}}
-    Cada alternativa es la recta C(n) = fijo + anual * n (costo acumulado a n años).
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        dict | None: {nombre: {'fijo': Fraction, 'anual': Fraction}} o None si hay error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: dict | None: {nombre: {'fijo': Fraction, 'anual': Fraction}} o None si hay error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -1425,12 +1011,9 @@ def cargarCostosArchivo(nombreArchivo):
         return None
     return alternativas
 
-
 def cargarCostosTeclado():
     """RF-27. Pide nombre, costo fijo y costo anual de cada alternativa.
-
-    Devuelve:
-        dict: {nombre: {'fijo': Fraction, 'anual': Fraction}}.
+    Devuelve: dict: {nombre: {'fijo': Fraction, 'anual': Fraction}}.
     """
     cantidad = pedirEntero("Cantidad de alternativas (2 a 10): ", 2, 10)
     alternativas = {}
@@ -1443,38 +1026,26 @@ def cargarCostosTeclado():
             alternativas[nombre] = {"fijo": datos[0], "anual": datos[1]}
     return alternativas
 
-
 def puntoEquilibrio(alternativa1, alternativa2):
-    """RF-28 a RF-30. Calcula en qué año se igualan los costos acumulados de dos alternativas.
-
-    Modelo matemático: cada alternativa es una recta C = fijo + anual * n. Se
-    plantea el sistema 2 x 2 en las incógnitas (n, C):
-        anual1 * n - C = -fijo1
-        anual2 * n - C = -fijo2
-    y se resuelve con gaussJordan. Si los costos anuales son iguales las rectas son
-    paralelas (o coincidentes) y no hay un único punto de equilibrio.
-
-    Parámetros:
-        alternativa1 (dict): {'fijo', 'anual'} de la primera alternativa.
-        alternativa2 (dict): {'fijo', 'anual'} de la segunda alternativa.
-    Devuelve:
-        tuple[str, list[Fraction]]: (clasificación, [n, C]); la lista está vacía si
-        no hay solución única.
+    """RF-28 a RF-30. Calcula en qué año se igualan los costos acumulados de dos alternativas. Modelo
+      matemático: cada alternativa es una recta C = fijo + anual * n. Se plantea el sistema 2 x 2 en
+      las incógnitas (n, C): anual1 * n - C = -fijo1 anual2 * n - C = -fijo2 y se resuelve con
+      gaussJordan. Si los costos anuales son iguales las rectas son paralelas (o coincidentes) y no
+      hay un único punto de equilibrio. Parámetros: alternativa1 (dict): {'fijo', 'anual'} de la
+      primera alternativa; alternativa2 (dict): {'fijo', 'anual'} de la segunda alternativa.
+      Devuelve: tuple[str, list[Fraction]]: (clasificación, [n, C]); la lista está vacía si no hay
+      solución única.
     """
     ampliada = [[alternativa1["anual"], Fraction(-1), -alternativa1["fijo"]],
                 [alternativa2["anual"], Fraction(-1), -alternativa2["fijo"]]]
     return gaussJordan(ampliada, False)
 
-
 def compararEnAnio(alternativas, anio):
     """Calcula el costo acumulado de cada alternativa en un año y las ordena.
-
-    Parámetros:
-        alternativas (dict): {nombre: {'fijo', 'anual'}}.
-        anio (Fraction | int): año de operación n.
-    Devuelve:
-        list[dict]: registros {'nombre', 'costo'} ordenados de menor a mayor costo
-        (selección); el primero es la alternativa más económica en ese año.
+    Parámetros: alternativas (dict): {nombre: {'fijo', 'anual'}}; anio (Fraction | int): año de
+      operación n.
+    Devuelve: list[dict]: registros {'nombre', 'costo'} ordenados de menor a mayor costo
+      (selección); el primero es la alternativa más económica en ese año.
     """
     registros = []
     for nombre in alternativas:
@@ -1482,17 +1053,9 @@ def compararEnAnio(alternativas, anio):
         registros.append({"nombre": nombre, "costo": costo})
     return ordenarSeleccion(registros, "costo", False)
 
-
 def mostrarEquilibrios(alternativas):
     """RF-28 a RF-30. Muestra el equilibrio de cada par de alternativas y compara en años elegidos.
-
-    Para cada par informa el año y el costo en que se igualan, o que no hay
-    equilibrio único. Si el equilibrio da un año negativo se avisa que no ocurre en
-    el futuro (la alternativa de menor pendiente ya es más barata desde el inicio).
-    Después permite ingresar años para ver cuál alternativa es más económica.
-
-    Parámetros:
-        alternativas (dict): {nombre: {'fijo', 'anual'}}.
+    Parámetros: alternativas (dict): {nombre: {'fijo', 'anual'}}.
     """
     nombres = list(alternativas.keys())
     for i in range(len(nombres)):
@@ -1518,23 +1081,12 @@ def mostrarEquilibrios(alternativas):
             print(registro["nombre"], "=", formatearNumero(registro["costo"]), end="  ")
         print("-> más económica:", ranking[0]["nombre"])
 
-
-# -----------------------------------------------------------------------------
-# RF-31 a RF-34 - Camino mínimo (Dijkstra)
-# -----------------------------------------------------------------------------
+# --- RF-31 a RF-34 - Camino mínimo (Dijkstra) ---
 
 def cargarRedArchivo(nombreArchivo):
     """RF-31. Carga la red de distribución (grafo ponderado no dirigido).
-
-    Formato esperado:
-        {"aristas": [{"desde": "D", "hasta": "H1", "minutos": 8}, ...]}
-    Cada arista se guarda en los dos sentidos (grafo[u][v] y grafo[v][u]) porque el
-    grafo no es dirigido. Dijkstra exige pesos no negativos, por eso se rechazan.
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        dict | None: grafo[nodo][vecino] = minutos (Fraction), o None si hay error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: dict | None: grafo[nodo][vecino] = minutos (Fraction), o None si hay error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -1564,15 +1116,9 @@ def cargarRedArchivo(nombreArchivo):
         grafo[hasta][desde] = peso
     return grafo
 
-
 def mostrarMatrizPesos(grafo):
     """Muestra la matriz de pesos W del grafo ('inf' donde no hay arista directa).
-
-    W[u][v] = peso de la arista u-v; 0 en la diagonal; infinito si no hay arista.
-    Es simétrica porque el grafo no es dirigido.
-
-    Parámetros:
-        grafo (dict): grafo[nodo][vecino] = minutos.
+    Parámetros: grafo (dict): grafo[nodo][vecino] = minutos.
     """
     nodos = list(grafo.keys())
     ancho = 5
@@ -1596,15 +1142,11 @@ def mostrarMatrizPesos(grafo):
                 linea = linea + "inf".rjust(ancho)
         print(linea)
 
-
 def buscarMinimoNoFijado(distancia, fijado):
     """Busca el vértice no fijado de menor distancia (en empates, el primero).
-
-    Parámetros:
-        distancia (dict): distancia provisoria desde el origen a cada vértice.
-        fijado (dict): {vértice: True si su distancia ya es definitiva}.
-    Devuelve:
-        str | None: el vértice elegido, o None si ya están todos fijados.
+    Parámetros: distancia (dict): distancia provisoria desde el origen a cada vértice; fijado
+      (dict): {vértice: True si su distancia ya es definitiva}.
+    Devuelve: str | None: el vértice elegido, o None si ya están todos fijados.
     Complejidad: O(n). Dijkstra la llama n veces, de ahí su costo total O(n^2).
     """
     elegido = None
@@ -1614,25 +1156,17 @@ def buscarMinimoNoFijado(distancia, fijado):
                 elegido = nodo
     return elegido
 
-
 def dijkstra(grafo, origen, destino, mostrarEtapas):
-    """RF-32 a RF-34. Camino mínimo de 'origen' a 'destino' con el algoritmo de Dijkstra.
-
-    Modelo matemático: grafo ponderado con pesos no negativos. En cada etapa se
-    FIJA el vértice no fijado de menor distancia provisoria (como los pesos no son
-    negativos, ningún otro camino puede mejorarla) y se ACTUALIZA la distancia de
-    sus vecinos si pasar por él es más corto. Se guarda el predecesor de cada
-    vértice para reconstruir el camino desde el destino hacia atrás.
-
-    Parámetros:
-        grafo (dict): grafo[nodo][vecino] = minutos.
-        origen (str): vértice de partida.
-        destino (str): vértice de llegada.
-        mostrarEtapas (bool): True para imprimir cada etapa (útil para comparar con la
-            tabla de etapas hecha a mano).
-    Devuelve:
-        tuple: (distancia, camino). Si no hay camino devuelve (infinito, []).
-    Complejidad: O(n^2) (búsqueda lineal del mínimo en cada etapa).
+    """RF-32 a RF-34. Camino mínimo de 'origen' a 'destino' con el algoritmo de Dijkstra. Modelo
+      matemático: grafo ponderado con pesos no negativos. En cada etapa se FIJA el vértice no fijado
+      de menor distancia provisoria (como los pesos no son negativos, ningún otro camino puede
+      mejorarla) y se ACTUALIZA la distancia de sus vecinos si pasar por él es más corto. Se guarda
+      el predecesor de cada vértice para reconstruir el camino desde el destino hacia atrás.
+      Parámetros: grafo (dict): grafo[nodo][vecino] = minutos; origen (str): vértice de partida;
+      destino (str): vértice de llegada; mostrarEtapas (bool): True para imprimir cada etapa (útil
+      para comparar con la tabla de etapas hecha a mano). Devuelve: tuple: (distancia, camino). Si
+      no hay camino devuelve (infinito, []). Complejidad: O(n^2) (búsqueda lineal del mínimo en cada
+      etapa).
     """
     if origen not in grafo or destino not in grafo:
         return infinito, []
@@ -1667,15 +1201,11 @@ def dijkstra(grafo, origen, destino, mostrarEtapas):
         actual = anterior[actual]
     return distancia[destino], camino
 
-
 def longitudDeRuta(grafo, ruta):
     """Suma los minutos de una ruta fija dada como lista de vértices.
-
-    Parámetros:
-        grafo (dict): grafo[nodo][vecino] = minutos.
-        ruta (list[str]): vértices en orden, por ejemplo ['D', 'H1', 'Z1', 'Z3'].
-    Devuelve:
-        Fraction | int | None: total de minutos, o None si algún tramo no existe en la red.
+    Parámetros: grafo (dict): grafo[nodo][vecino] = minutos; ruta (list[str]): vértices en orden,
+      por ejemplo ['D', 'H1', 'Z1', 'Z3'].
+    Devuelve: Fraction | int | None: total de minutos, o None si algún tramo no existe en la red.
     """
     total = 0
     for i in range(len(ruta) - 1):
@@ -1684,13 +1214,8 @@ def longitudDeRuta(grafo, ruta):
         total = total + grafo[ruta[i]][ruta[i + 1]]
     return total
 
-
 def mostrarCaminoMinimo():
-    """RF-32 a RF-34. Carga la red, pide origen y destino y muestra W, las etapas y el camino mínimo.
-
-    Opcionalmente compara con una ruta fija (la que usa el sistema heredado) e
-    informa el ahorro en minutos.
-    """
+    """RF-32 a RF-34. Carga la red, pide origen y destino y muestra W, las etapas y el camino mínimo."""
     grafo = cargarRedArchivo(pedirNombreArchivo("redDistribucion.json"))
     if grafo is None:
         return
@@ -1715,34 +1240,20 @@ def mostrarCaminoMinimo():
             print("Ruta fija:", " - ".join(texto.split()), "=", formatearNumero(largo))
             print("Ahorro del camino mínimo:", formatearNumero(largo - minimo), "minutos")
 
-
-# -----------------------------------------------------------------------------
-# RF-42 a RF-47 - Matriz de decisión ponderada (combinación lineal v = P.w)
-# -----------------------------------------------------------------------------
+# --- RF-42 a RF-47 - Matriz de decisión ponderada (combinación lineal v = P.w) ---
 
 def textoPorcentaje(numero):
     """Devuelve una fracción 0..1 como porcentaje con un decimal (por ejemplo '55.9 %').
-
-    Parámetros:
-        numero (Fraction): valor entre 0 y 1.
-    Devuelve:
-        str: porcentaje como texto.
+    Parámetros: numero (Fraction): valor entre 0 y 1.
+    Devuelve: str: porcentaje como texto.
     """
     return str(round(float(100 * numero), 1)) + " %"
 
-
 def validarPesos(criterios, pesos, etiqueta):
     """Convierte y valida un vector de pesos w = (w1, ..., wk).
-
-    Condiciones del modelo: un peso por criterio, cada wi >= 0 y suma de los pesos
-    exactamente igual a 1 (con Fraction la suma da 1 exacto, sin redondeos).
-
-    Parámetros:
-        criterios (list[str]): códigos de los criterios.
-        pesos (dict): {criterio: peso} tal como se leyó del archivo.
-        etiqueta (str): nombre del vector para los mensajes de error.
-    Devuelve:
-        dict | None: {criterio: Fraction} o None (con mensaje) si no es válido.
+    Parámetros: criterios (list[str]): códigos de los criterios; pesos (dict): {criterio: peso} tal
+      como se leyó del archivo; etiqueta (str): nombre del vector para los mensajes de error.
+    Devuelve: dict | None: {criterio: Fraction} o None (con mensaje) si no es válido.
     """
     if not isinstance(pesos, dict):
         print("Error:", etiqueta, "debe ser un diccionario criterio -> peso.")
@@ -1761,22 +1272,11 @@ def validarPesos(criterios, pesos, etiqueta):
         return None
     return resultado
 
-
 def cargarDecisionArchivo(nombreArchivo):
     """RF-42 a RF-44. Carga la matriz de decisión ponderada desde un archivo JSON.
-
-    Formato esperado:
-        {"criterios": ["C1", ...], "nombresCriterios": {"C1": "..."},
-         "pesos": {"C1": 0.25, ...},
-         "puntajes": {"A": {"C1": 2, ...}, "B": {...}},
-         "escenarios": {"nombre": {"C1": 0.15, ...}}}      (escenarios es opcional)
-    Valida que los pesos sumen 1 y que los puntajes estén entre 1 y 5.
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        dict | None: {'criterios', 'nombres', 'pesos', 'puntajes', 'escenarios'}
-        con todos los números como Fraction, o None si hubo un error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: dict | None: {'criterios', 'nombres', 'pesos', 'puntajes', 'escenarios'} con todos los
+      números como Fraction, o None si hubo un error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -1820,20 +1320,14 @@ def cargarDecisionArchivo(nombreArchivo):
     return {"criterios": criterios, "nombres": nombres, "pesos": pesos,
             "puntajes": puntajes, "escenarios": escenarios}
 
-
 def calcularPuntajes(decision, pesos):
-    """RF-42 a RF-47. Calcula v = P.w: el puntaje total de cada alternativa.
-
-    Modelo matemático: P es la matriz de puntajes (alternativas x criterios) y w el
-    vector de pesos. v_i = suma sobre j de p(i,j) * w(j) es una COMBINACIÓN LINEAL
-    de las columnas de P con coeficientes w. Como los pesos suman 1, v queda en la
-    misma escala de 1 a 5 que los puntajes.
-
-    Parámetros:
-        decision (dict): decisión cargada (usa 'criterios' y 'puntajes').
-        pesos (dict): vector de pesos {criterio: Fraction}.
-    Devuelve:
-        dict: {alternativa: Fraction} con el puntaje total de cada una.
+    """RF-42 a RF-47. Calcula v = P.w: el puntaje total de cada alternativa. Modelo matemático: P es la
+      matriz de puntajes (alternativas x criterios) y w el vector de pesos. v_i = suma sobre j de
+      p(i,j) * w(j) es una COMBINACIÓN LINEAL de las columnas de P con coeficientes w. Como los
+      pesos suman 1, v queda en la misma escala de 1 a 5 que los puntajes. Parámetros: decision
+      (dict): decisión cargada (usa 'criterios' y 'puntajes'); pesos (dict): vector de pesos
+      {criterio: Fraction}. Devuelve: dict: {alternativa: Fraction} con el puntaje total de cada
+      una.
     """
     valores = {}
     for alternativa in decision["puntajes"]:
@@ -1843,35 +1337,20 @@ def calcularPuntajes(decision, pesos):
         valores[alternativa] = total
     return valores
 
-
 def rankingDeAlternativas(valores):
     """Ordena las alternativas de mayor a menor puntaje (ordenamiento por selección).
-
-    Parámetros:
-        valores (dict): {alternativa: puntaje}.
-    Devuelve:
-        list[dict]: registros {'nombre', 'puntaje'}; el primero es la mejor alternativa.
+    Parámetros: valores (dict): {alternativa: puntaje}.
+    Devuelve: list[dict]: registros {'nombre', 'puntaje'}; el primero es la mejor alternativa.
     """
-    registros = []
-    for nombre in valores:
-        registros.append({"nombre": nombre, "puntaje": valores[nombre]})
-    return ordenarSeleccion(registros, "puntaje", True)
-
+    return ordenarSeleccion([{"nombre": n, "puntaje": valores[n]} for n in valores], "puntaje", True)
 
 def redistribuirPesos(criterios, pesos, criterio, nuevoPeso):
-    """Cambia el peso de un criterio y reparte el resto en la misma proporción.
-
-    Modelo matemático: si el criterio c pasa de w(c) a t, los demás se multiplican
-    por (1 - t) / (1 - w(c)); así siguen sumando 1 y conservan su importancia
-    relativa. Se usa para el análisis de sensibilidad.
-
-    Parámetros:
-        criterios (list[str]): códigos de los criterios.
-        pesos (dict): vector de pesos original.
-        criterio (str): criterio cuyo peso cambia.
-        nuevoPeso (Fraction): nuevo peso t, con 0 <= t <= 1.
-    Devuelve:
-        dict: nuevo vector de pesos.
+    """Cambia el peso de un criterio y reparte el resto en la misma proporción. Modelo matemático: si
+      el criterio c pasa de w(c) a t, los demás se multiplican por (1 - t) / (1 - w(c)); así siguen
+      sumando 1 y conservan su importancia relativa. Se usa para el análisis de sensibilidad.
+      Parámetros: criterios (list[str]): códigos de los criterios; pesos (dict): vector de pesos
+      original; criterio (str): criterio cuyo peso cambia; nuevoPeso (Fraction): nuevo peso t, con 0
+      <= t <= 1. Devuelve: dict: nuevo vector de pesos.
     """
     nuevo = {}
     for c in criterios:
@@ -1883,23 +1362,15 @@ def redistribuirPesos(criterios, pesos, criterio, nuevoPeso):
             nuevo[c] = pesos[c] * (1 - nuevoPeso) / (1 - pesos[criterio])
     return nuevo
 
-
 def pesoDeCambio(decision, criterio, ganadora, otra):
-    """Calcula desde qué peso del criterio la alternativa 'otra' supera a la 'ganadora'.
-
-    Modelo matemático: al variar el peso t del criterio c (con el resto repartido
-    en proporción) la diferencia v(ganadora) - v(otra) es una función lineal de t.
-    Vale d0 en t = 0 y d1 = p(ganadora,c) - p(otra,c) en t = 1. Si cambia de signo
-    entre 0 y 1, se anula en t* = d0 / (d0 - d1).
-
-    Parámetros:
-        decision (dict): decisión cargada.
-        criterio (str): criterio cuyo peso se hace variar.
-        ganadora (str): alternativa que hoy está primera.
-        otra (str): alternativa con la que se compara.
-    Devuelve:
-        Fraction | None: peso t* (entre 0 y 1) a partir del cual 'otra' supera a la
-        ganadora, o None si con ningún peso de ese criterio la supera.
+    """Calcula desde qué peso del criterio la alternativa 'otra' supera a la 'ganadora'. Modelo
+      matemático: al variar el peso t del criterio c (con el resto repartido en proporción) la
+      diferencia v(ganadora) - v(otra) es una función lineal de t. Vale d0 en t = 0 y d1 =
+      p(ganadora,c) - p(otra,c) en t = 1. Si cambia de signo entre 0 y 1, se anula en t* = d0 / (d0
+      - d1). Parámetros: decision (dict): decisión cargada; criterio (str): criterio cuyo peso se
+      hace variar; ganadora (str): alternativa que hoy está primera; otra (str): alternativa con la
+      que se compara. Devuelve: Fraction | None: peso t* (entre 0 y 1) a partir del cual 'otra'
+      supera a la ganadora, o None si con ningún peso de ese criterio la supera.
     """
     pesos = decision["pesos"]
     if pesos[criterio] == 1:
@@ -1914,16 +1385,9 @@ def pesoDeCambio(decision, criterio, ganadora, otra):
         return d0 / (d0 - d1)
     return None
 
-
 def mostrarDecision(decision):
     """RF-42 a RF-47. Muestra P, w, v = P.w, el ranking y el análisis de sensibilidad.
-
-    Incluye: los escenarios de pesos del archivo, el peso crítico de cada criterio
-    (a partir de cuánto cambiaría la recomendación) y, opcionalmente, un cambio de
-    peso que ingrese el usuario.
-
-    Parámetros:
-        decision (dict): decisión cargada con cargarDecisionArchivo.
+    Parámetros: decision (dict): decisión cargada con cargarDecisionArchivo.
     """
     criterios = decision["criterios"]
     alternativas = list(decision["puntajes"].keys())
@@ -1968,25 +1432,16 @@ def mostrarDecision(decision):
     elif len(texto) > 0:
         print("Entrada no válida; se omite la prueba.")
 
-
-# -----------------------------------------------------------------------------
-# RF-48 a RF-52 - Relaciones como matrices: incidencia (Punto 1) y trazabilidad (Punto 5)
-# -----------------------------------------------------------------------------
+# --- RF-48 a RF-52 - Relaciones como matrices: incidencia (Punto 1) y trazabilidad (Punto 5) ---
 
 def armarRelacion(filas, columnas, pares, nombre):
-    """Arma la matriz booleana de una relación entre dos conjuntos.
-
-    Modelo matemático: una relación R de X en Y se representa con una matriz
-    r(x, y) = 1 si x está relacionado con y. 'pares' da, para cada elemento de X,
-    la lista de elementos de Y con los que se relaciona.
-
-    Parámetros:
-        filas (list[str]): elementos del primer conjunto X.
-        columnas (list[str]): elementos del segundo conjunto Y.
-        pares (dict): {x: [y, ...]}.
-        nombre (str): nombre de la relación para los mensajes de error.
-    Devuelve:
-        dict | None: tabla[x][y] de 0 y 1, o None (con mensaje) si algún elemento no existe.
+    """Arma la matriz booleana de una relación entre dos conjuntos. Modelo matemático: una relación R
+      de X en Y se representa con una matriz r(x, y) = 1 si x está relacionado con y. 'pares' da,
+      para cada elemento de X, la lista de elementos de Y con los que se relaciona. Parámetros:
+      filas (list[str]): elementos del primer conjunto X; columnas (list[str]): elementos del
+      segundo conjunto Y; pares (dict): {x: [y, ...]}; nombre (str): nombre de la relación para los
+      mensajes de error. Devuelve: dict | None: tabla[x][y] de 0 y 1, o None (con mensaje) si algún
+      elemento no existe.
     """
     if not isinstance(pares, dict):
         print("Error: la relación", nombre, "debe ser un diccionario elemento -> lista.")
@@ -2003,15 +1458,10 @@ def armarRelacion(filas, columnas, pares, nombre):
             tabla[x][y] = 1
     return tabla
 
-
 def cargarListaDeNombres(datos, clave):
     """Lee de un JSON una lista de nombres no vacía y sin repetidos.
-
-    Parámetros:
-        datos (dict): contenido del archivo.
-        clave (str): clave donde está la lista.
-    Devuelve:
-        list[str] | None: la lista, o None (con mensaje) si falta o es inválida.
+    Parámetros: datos (dict): contenido del archivo; clave (str): clave donde está la lista.
+    Devuelve: list[str] | None: la lista, o None (con mensaje) si falta o es inválida.
     """
     lista = datos.get(clave)
     if not isinstance(lista, list) or len(lista) == 0:
@@ -2025,13 +1475,9 @@ def cargarListaDeNombres(datos, clave):
         vistos[nombre] = True
     return lista
 
-
 def cargarIncidenciaArchivo(nombreArchivo):
     """RF-48 y RF-49. Carga la matriz de incidencia S (solicitudes x módulos).
-
-    Formato: {"solicitudes": [...], "modulos": [...], "incidencia": {"s1": ["PED", "ASG"], ...}}
-    Devuelve:
-        dict | None: {'filas', 'columnas', 'tabla'} o None si hubo un error.
+    Devuelve: dict | None: {'filas', 'columnas', 'tabla'} o None si hubo un error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -2045,41 +1491,27 @@ def cargarIncidenciaArchivo(nombreArchivo):
         return None
     return {"filas": solicitudes, "columnas": modulos, "tabla": tabla}
 
-
 def calcularSuperposicion(incidencia):
-    """Calcula el alcance directo a = S.u y la matriz de superposición S.S^T.
-
-    Modelo matemático: u es el vector de unos; a(i) = suma de la fila i de S = cantidad
-    de módulos que modifica la solicitud i. (S.S^T)(i,k) = cantidad de módulos que
-    modifican a la vez las solicitudes i y k; su diagonal es el alcance directo
-    (porque s(i,j)^2 = s(i,j) en una matriz de ceros y unos).
-
-    Parámetros:
-        incidencia (dict): {'filas', 'columnas', 'tabla'} de cargarIncidenciaArchivo.
-    Devuelve:
-        tuple[dict, dict]: (alcance, superposicion) con alcance[solicitud] y
-        superposicion[solicitud][solicitud].
+    """Calcula el alcance directo a = S.u y la matriz de superposición S.S^T. Modelo matemático: u es
+      el vector de unos; a(i) = suma de la fila i de S = cantidad de módulos que modifica la
+      solicitud i. (S.S^T)(i,k) = cantidad de módulos que modifican a la vez las solicitudes i y k;
+      su diagonal es el alcance directo (porque s(i,j)^2 = s(i,j) en una matriz de ceros y unos).
+      Parámetros: incidencia (dict): {'filas', 'columnas', 'tabla'} de cargarIncidenciaArchivo.
+      Devuelve: tuple[dict, dict]: (alcance, superposicion) con alcance[solicitud] y
+      superposicion[solicitud][solicitud].
     """
     filas = incidencia["filas"]
     columnas = incidencia["columnas"]
     unos = crearTabla(columnas, ["u"], 1)
     producto = multiplicarTablas(filas, columnas, ["u"], incidencia["tabla"], unos, False)
-    alcance = {}
-    for fila in filas:
-        alcance[fila] = producto[fila]["u"]
+    alcance = {fila: producto[fila]["u"] for fila in filas}
     traspuesta = transponerTabla(filas, columnas, incidencia["tabla"])
     superposicion = multiplicarTablas(filas, columnas, filas, incidencia["tabla"], traspuesta, False)
     return alcance, superposicion
 
-
 def analizarIncidencia(nombreArchivo):
     """RF-48 y RF-49. Muestra S, el alcance directo y la superposición S.S^T.
-
-    Ordena con burbuja las solicitudes por alcance y los pares de solicitudes por
-    cantidad de módulos compartidos, para ver cuáles requieren coordinación.
-
-    Parámetros:
-        nombreArchivo (str): archivo JSON con la matriz de incidencia.
+    Parámetros: nombreArchivo (str): archivo JSON con la matriz de incidencia.
     """
     incidencia = cargarIncidenciaArchivo(nombreArchivo)
     if incidencia is None:
@@ -2089,14 +1521,9 @@ def analizarIncidencia(nombreArchivo):
     alcance, superposicion = calcularSuperposicion(incidencia)
     mostrarTabla("S . S^T (diagonal = alcance directo; fuera de la diagonal = módulos compartidos)",
                  filas, filas, superposicion)
-    registros = []
-    for fila in filas:
-        registros.append({"nombre": fila, "alcance": alcance[fila]})
+    registros = [{"nombre": fila, "alcance": alcance[fila]} for fila in filas]
     print()
-    print("Alcance directo a = S.u:", end=" ")
-    for fila in filas:
-        print(fila + "=" + str(alcance[fila]), end="  ")
-    print()
+    print("Alcance directo a = S.u:", "  ".join(fila + "=" + str(alcance[fila]) for fila in filas))
     ranking = ordenarBurbuja(registros, "alcance", True)
     print("Solicitudes de mayor a menor alcance (burbuja):", [r["nombre"] + "(" + str(r["alcance"]) + ")" for r in ranking])
     pares = []
@@ -2108,20 +1535,12 @@ def analizarIncidencia(nombreArchivo):
     print("Pares con módulos en común:", [p["nombre"] + "(" + str(p["comparten"]) + ")" for p in pares])
     if len(pares) > 0:
         primero = pares[0]["nombre"].split("-")
-        comunes = []
-        for modulo in incidencia["columnas"]:
-            if incidencia["tabla"][primero[0]][modulo] == 1 and incidencia["tabla"][primero[1]][modulo] == 1:
-                comunes.append(modulo)
+        comunes = [m for m in incidencia["columnas"] if incidencia["tabla"][primero[0]][m] == 1 and incidencia["tabla"][primero[1]][m] == 1]
         print("Mayor superposición:", pares[0]["nombre"], "comparten", comunes, "-> conviene planificarlas juntas.")
-
 
 def cargarTrazabilidadArchivo(nombreArchivo):
     """RF-50. Carga las relaciones requerimiento-componente y componente-prueba.
-
-    Formato: {"requerimientos": [...], "componentes": [...], "pruebas": [...],
-              "reqComp": {"R1": ["C1"], ...}, "compPrueba": {"C1": ["T1"], ...}}
-    Devuelve:
-        dict | None: {'requerimientos', 'componentes', 'pruebas', 'rc', 'ct'} o None.
+    Devuelve: dict | None: {'requerimientos', 'componentes', 'pruebas', 'rc', 'ct'} o None.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -2137,79 +1556,42 @@ def cargarTrazabilidadArchivo(nombreArchivo):
         return None
     return {"requerimientos": requerimientos, "componentes": componentes, "pruebas": pruebas, "rc": rc, "ct": ct}
 
-
 def calcularTrazabilidad(trazabilidad):
-    """Calcula RT = RC (.) CT, el producto booleano de las dos relaciones.
-
-    Modelo matemático: composición de relaciones. rt(r, t) = 1 si existe un componente
-    c con rc(r, c) = 1 y ct(c, t) = 1: la prueba t verifica al requerimiento r a
-    través de algún componente. Una fila nula de RT es un requerimiento sin prueba.
-
-    Parámetros:
-        trazabilidad (dict): datos cargados con cargarTrazabilidadArchivo.
-    Devuelve:
-        dict: tabla rt[requerimiento][prueba] de 0 y 1.
+    """Calcula RT = RC (.) CT, el producto booleano de las dos relaciones. Modelo matemático:
+      composición de relaciones. rt(r, t) = 1 si existe un componente c con rc(r, c) = 1 y ct(c, t)
+      = 1: la prueba t verifica al requerimiento r a través de algún componente. Una fila nula de RT
+      es un requerimiento sin prueba. Parámetros: trazabilidad (dict): datos cargados con
+      cargarTrazabilidadArchivo. Devuelve: dict: tabla rt[requerimiento][prueba] de 0 y 1.
     """
     return multiplicarTablas(trazabilidad["requerimientos"], trazabilidad["componentes"],
                              trazabilidad["pruebas"], trazabilidad["rc"], trazabilidad["ct"], True)
 
-
 def filasNulas(filas, columnas, tabla):
     """Devuelve los nombres de las filas formadas solo por ceros.
-
-    Parámetros:
-        filas (list[str]): nombres de las filas.
-        columnas (list[str]): nombres de las columnas.
-        tabla (dict): tabla de ceros y unos.
-    Devuelve:
-        list[str]: filas nulas (elementos sin ninguna relación).
+    Parámetros: filas (list[str]): nombres de las filas; columnas (list[str]): nombres de las
+      columnas; tabla (dict): tabla de ceros y unos.
+    Devuelve: list[str]: filas nulas (elementos sin ninguna relación).
     """
-    nulas = []
-    for fila in filas:
-        suma = 0
-        for columna in columnas:
-            suma = suma + tabla[fila][columna]
-        if suma == 0:
-            nulas.append(fila)
-    return nulas
-
+    return [fila for fila in filas if sum(tabla[fila][columna] for columna in columnas) == 0]
 
 def impactoDeComponente(trazabilidad, componente):
-    """Análisis de impacto de modificar un componente.
-
-    Modelo matemático: la columna del componente en RC da los requerimientos
-    involucrados; la fila del componente en CT da las pruebas que lo verifican
-    directamente; las filas de esos requerimientos en RT dan todas las pruebas que
-    conviene repetir para volver a verificarlos completos.
-
-    Parámetros:
-        trazabilidad (dict): datos cargados.
-        componente (str): componente que se modifica.
-    Devuelve:
-        tuple[list, list, list]: (requerimientos involucrados, pruebas directas,
-        pruebas para reverificar los requerimientos afectados).
+    """Análisis de impacto de modificar un componente. Modelo matemático: la columna del componente en
+      RC da los requerimientos involucrados; la fila del componente en CT da las pruebas que lo
+      verifican directamente; las filas de esos requerimientos en RT dan todas las pruebas que
+      conviene repetir para volver a verificarlos completos. Parámetros: trazabilidad (dict): datos
+      cargados; componente (str): componente que se modifica. Devuelve: tuple[list, list, list]:
+      (requerimientos involucrados, pruebas directas, pruebas para reverificar los requerimientos
+      afectados).
     """
     rt = calcularTrazabilidad(trazabilidad)
-    requerimientos = []
-    for r in trazabilidad["requerimientos"]:
-        if trazabilidad["rc"][r][componente] == 1:
-            requerimientos.append(r)
-    directas = []
-    completas = []
-    for t in trazabilidad["pruebas"]:
-        if trazabilidad["ct"][componente][t] == 1:
-            directas.append(t)
-        for r in requerimientos:
-            if rt[r][t] == 1 and t not in completas:
-                completas.append(t)
+    requerimientos = [r for r in trazabilidad["requerimientos"] if trazabilidad["rc"][r][componente] == 1]
+    directas = [t for t in trazabilidad["pruebas"] if trazabilidad["ct"][componente][t] == 1]
+    completas = [t for t in trazabilidad["pruebas"] if any(rt[r][t] == 1 for r in requerimientos)]
     return requerimientos, directas, completas
-
 
 def analizarTrazabilidad(nombreArchivo):
     """RF-50 a RF-52. Muestra RC, CT, RT, las filas nulas y el impacto.
-
-    Parámetros:
-        nombreArchivo (str): archivo JSON con las relaciones de trazabilidad.
+    Parámetros: nombreArchivo (str): archivo JSON con las relaciones de trazabilidad.
     """
     trazabilidad = cargarTrazabilidadArchivo(nombreArchivo)
     if trazabilidad is None:
@@ -2235,25 +1617,13 @@ def analizarTrazabilidad(nombreArchivo):
             print("Pruebas que lo verifican (fila", codigo, "de CT):", directas)
             print("Pruebas para reverificar esos requerimientos (filas de RT):", completas)
 
-
-# -----------------------------------------------------------------------------
-# RF-53 a RF-58 - Digrafo de procesos: caminos simples, duración y porcentaje manual
-# -----------------------------------------------------------------------------
+# --- RF-53 a RF-58 - Digrafo de procesos: caminos simples, duración y porcentaje manual ---
 
 def cargarProcesoArchivo(nombreArchivo):
     """RF-53. Carga un proceso como digrafo de actividades con duración.
-
-    Formato: {"inicio": "R", "fin": "F",
-              "actividades": {"R": {"nombre": "...", "tipo": "automatica", "minutos": 2}, ...},
-              "sucesores": {"R": ["V"], ...}}
-    'tipo' puede ser 'manual', 'automatica' o 'sin dato'. Cada actividad es un vértice y
-    cada sucesor un arco.
-
-    Parámetros:
-        nombreArchivo (str): nombre del archivo JSON.
-    Devuelve:
-        dict | None: {'codigos', 'actividades', 'sucesores', 'inicio', 'fin'} con los
-        minutos como Fraction, o None si hubo un error.
+    Parámetros: nombreArchivo (str): nombre del archivo JSON.
+    Devuelve: dict | None: {'codigos', 'actividades', 'sucesores', 'inicio', 'fin'} con los minutos
+      como Fraction, o None si hubo un error.
     """
     datos = leerArchivoJson(nombreArchivo)
     if datos is None:
@@ -2285,35 +1655,20 @@ def cargarProcesoArchivo(nombreArchivo):
         return None
     return {"codigos": codigos, "actividades": convertidas, "sucesores": sucesores, "inicio": inicio, "fin": fin}
 
-
 def armarSistemaProceso(proceso):
-    """Convierte el proceso en un digrafo (reutiliza armarSistema) para usar Warshall.
-
-    Modelo matemático: G_P = (V, E) con V = actividades y a(i,j) = 1 si la actividad j
-    sigue a la i. La diagonal de A* señala los ciclos (retrabajo).
-
-    Parámetros:
-        proceso (dict): proceso cargado.
-    Devuelve:
-        dict | None: sistema {'modulos', 'adyacencia'} o None si hay un sucesor inexistente.
+    """Convierte el proceso en un digrafo (reutiliza armarSistema) para usar Warshall. Modelo
+      matemático: G_P = (V, E) con V = actividades y a(i,j) = 1 si la actividad j sigue a la i. La
+      diagonal de A* señala los ciclos (retrabajo). Parámetros: proceso (dict): proceso cargado.
+      Devuelve: dict | None: sistema {'modulos', 'adyacencia'} o None si hay un sucesor inexistente.
     """
     return armarSistema(proceso["codigos"], proceso["sucesores"])
 
-
 def explorarCaminos(sistema, actual, destino, recorrido, resultado):
     """Búsqueda en profundidad (recursiva) de todos los caminos simples hacia 'destino'.
-
-    Un camino simple no repite vértices; por eso el ciclo V -> Q -> V no se recorre
-    más de una vez y la cantidad de caminos es finita. En cada llamada se agrega
-    'actual' al recorrido, se prueba cada sucesor que todavía no esté en él y, al
-    volver, se quita (retroceso o 'backtracking').
-
-    Parámetros:
-        sistema (dict): digrafo del proceso.
-        actual (str): vértice donde se está parado.
-        destino (str): vértice final buscado.
-        recorrido (list[str]): camino construido hasta ahora (se modifica y se restaura).
-        resultado (list[list[str]]): lista donde se guardan los caminos completos.
+    Parámetros: sistema (dict): digrafo del proceso; actual (str): vértice donde se está parado;
+      destino (str): vértice final buscado; recorrido (list[str]): camino construido hasta ahora (se
+      modifica y se restaura); resultado (list[list[str]]): lista donde se guardan los caminos
+      completos.
     """
     recorrido.append(actual)
     if actual == destino:
@@ -2324,14 +1679,10 @@ def explorarCaminos(sistema, actual, destino, recorrido, resultado):
                 explorarCaminos(sistema, siguiente, destino, recorrido, resultado)
     recorrido.pop()
 
-
 def caminosSimples(proceso):
     """RF-53 a RF-58. Devuelve todos los caminos simples del inicio al fin del proceso.
-
-    Parámetros:
-        proceso (dict): proceso cargado con cargarProcesoArchivo.
-    Devuelve:
-        list[list[str]]: caminos, cada uno como lista de códigos de actividad.
+    Parámetros: proceso (dict): proceso cargado con cargarProcesoArchivo.
+    Devuelve: list[list[str]]: caminos, cada uno como lista de códigos de actividad.
     """
     sistema = armarSistemaProceso(proceso)
     if sistema is None:
@@ -2340,16 +1691,11 @@ def caminosSimples(proceso):
     explorarCaminos(sistema, proceso["inicio"], proceso["fin"], [], resultado)
     return resultado
 
-
 def duracionDelCamino(proceso, camino, soloManuales):
     """Suma los minutos de las actividades de un camino (E no se considera: vale 0).
-
-    Parámetros:
-        proceso (dict): proceso cargado.
-        camino (list[str]): actividades del camino.
-        soloManuales (bool): True para sumar solo las actividades de tipo manual.
-    Devuelve:
-        Fraction | int: minutos totales.
+    Parámetros: proceso (dict): proceso cargado; camino (list[str]): actividades del camino;
+      soloManuales (bool): True para sumar solo las actividades de tipo manual.
+    Devuelve: Fraction | int: minutos totales.
     """
     total = 0
     for codigo in camino:
@@ -2358,15 +1704,11 @@ def duracionDelCamino(proceso, camino, soloManuales):
             total = total + actividad["minutos"]
     return total
 
-
 def resumirProceso(proceso):
     """Calcula, para cada camino simple, su duración, sus minutos manuales y su porcentaje manual.
-
-    Parámetros:
-        proceso (dict): proceso cargado.
-    Devuelve:
-        list[dict]: registros {'camino', 'minutos', 'manuales', 'porcentaje'} ordenados
-        de mayor a menor duración (burbuja). 'porcentaje' es un Fraction 0..1.
+    Parámetros: proceso (dict): proceso cargado.
+    Devuelve: list[dict]: registros {'camino', 'minutos', 'manuales', 'porcentaje'} ordenados de
+      mayor a menor duración (burbuja). 'porcentaje' es un Fraction 0..1.
     """
     registros = []
     for camino in caminosSimples(proceso):
@@ -2378,12 +1720,9 @@ def resumirProceso(proceso):
         registros.append({"camino": camino, "minutos": minutos, "manuales": manuales, "porcentaje": porcentaje})
     return ordenarBurbuja(registros, "minutos", True)
 
-
 def mostrarProceso(proceso):
     """Muestra la matriz del proceso, los ciclos y los caminos simples con sus tiempos.
-
-    Parámetros:
-        proceso (dict): proceso cargado.
+    Parámetros: proceso (dict): proceso cargado.
     """
     sistema = armarSistemaProceso(proceso)
     if sistema is None:
@@ -2401,13 +1740,11 @@ def mostrarProceso(proceso):
         print("  ", "->".join(registro["camino"]), ":", formatearNumero(registro["minutos"]), "min, manuales",
               formatearNumero(registro["manuales"]), "min =", textoPorcentaje(registro["porcentaje"]))
 
-
 def mostrarComparacionProcesos():
-    """RF-53 a RF-58. Analiza el proceso actual y, si se indica, el reingenierizado, y calcula la reducción.
-
-    Modelo matemático: la reducción porcentual es (d0 - d1) / d0, con d0 la duración
-    del camino más largo del proceso actual y d1 la del camino más largo del
-    reingenierizado (peor caso de cada proceso).
+    """RF-58 y RF-64. Analiza el proceso actual y, si se indica, el reingenierizado, y calcula la
+      reducción. Modelo matemático: la reducción porcentual es (d0 - d1) / d0, con d0 la duración
+      del camino más largo del proceso actual y d1 la del camino más largo del reingenierizado (peor
+      caso de cada proceso).
     """
     actual = cargarProcesoArchivo(pedirNombreArchivo("procesoPedido.json"))
     if actual is None:
@@ -2433,39 +1770,24 @@ def mostrarComparacionProcesos():
         print("Camino más largo:", formatearNumero(d0), "min ->", formatearNumero(d1), "min; reducción =",
               textoPorcentaje(Fraction(d0 - d1) / Fraction(d0)))
 
-
-# -----------------------------------------------------------------------------
-# RF-59 a RF-62 - Principios de conteo
-# -----------------------------------------------------------------------------
+# --- RF-59 a RF-62 - Principios de conteo ---
 
 def factorial(n):
     """n! = n * (n - 1) * ... * 1 (0! = 1). Cantidad de formas de ordenar n elementos distintos.
-
-    Parámetros:
-        n (int): entero no negativo.
-    Devuelve:
-        int: el factorial de n.
+    Parámetros: n (int): entero no negativo.
+    Devuelve: int: el factorial de n.
     """
     resultado = 1
     for i in range(2, n + 1):
         resultado = resultado * i
     return resultado
 
-
 def permutaciones(n):
-    """Permutaciones de n elementos distintos: P(n) = n!. Importa el orden y se usan todos.
-
-    Ejemplo: ordenar las 5 solicitudes pendientes -> 5! = 120.
-    """
+    """Permutaciones de n elementos distintos: P(n) = n!. Importa el orden y se usan todos."""
     return factorial(n)
 
-
 def variaciones(n, r):
-    """Variaciones sin repetición: V(n, r) = n! / (n - r)!. Importa el orden; se eligen r de n.
-
-    Ejemplo: asignaciones (autor, revisor) con 6 personas -> V(6, 2) = 30.
-    Devuelve 0 si r > n (no se pueden elegir más elementos de los que hay).
-    """
+    """Variaciones sin repetición: V(n, r) = n! / (n - r)!. Importa el orden; se eligen r de n."""
     if r > n or r < 0:
         return 0
     resultado = 1
@@ -2473,33 +1795,21 @@ def variaciones(n, r):
         resultado = resultado * i
     return resultado
 
-
 def combinaciones(n, r):
-    """Combinaciones sin repetición: C(n, r) = n! / (r! (n - r)!). NO importa el orden.
-
-    Ejemplo: elegir 4 de 6 solicitudes -> C(6, 4) = 15. Se obtiene de las variaciones
-    dividiendo por r!, que son las formas de ordenar cada elección.
-    """
+    """Combinaciones sin repetición: C(n, r) = n! / (r! (n - r)!). NO importa el orden."""
     return variaciones(n, r) // factorial(r)
 
-
 def variacionesConRepeticion(n, r):
-    """Variaciones con repetición: n^r (principio de multiplicación). Importa el orden y se puede repetir.
-
-    Ejemplo: 5 elementos con 6 decisiones posibles cada uno -> 6^5 = 7776.
+    """Variaciones con repetición: n^r (principio de multiplicación). Importa el orden y se puede
+      repetir.
     """
     resultado = 1
     for i in range(r):
         resultado = resultado * n
     return resultado
 
-
 def mostrarConteo():
-    """RF-59 a RF-62. Muestra los conteos del informe y permite calcular n y r propios.
-
-    Cubre los incisos P1-h (elegir 4 de 6), P2-k (configuraciones de decisión) y
-    P5-i (pares de revisión, asignaciones, ordenamientos de solicitudes).
-    """
+    """RF-59 a RF-62. Muestra los conteos del informe y permite calcular n y r propios."""
     print()
     print("Conteos del informe")
     print("  P1-h  Elegir 4 situaciones de 6 (no importa el orden): C(6,4) =", combinaciones(6, 4))
@@ -2517,18 +1827,13 @@ def mostrarConteo():
               " C(" + str(n) + "," + str(r) + ") =", combinaciones(n, r), " " + str(n) + "^" + str(r) + " =",
               variacionesConRepeticion(n, r))
 
-
-# -----------------------------------------------------------------------------
-# RF-63 a RF-69 - Gráficos (opcional: necesita matplotlib y networkx)
-# -----------------------------------------------------------------------------
+# --- Gráficos (opcional: necesita matplotlib y networkx) ---
 
 def prepararCarpetaGraficos(carpeta):
     """Crea la carpeta de gráficos si no existe y devuelve su ruta.
-
-    Parámetros:
-        carpeta (str | None): carpeta de salida; si es None se usa 'graficos' junto al programa.
-    Devuelve:
-        str: ruta de la carpeta lista para guardar imágenes.
+    Parámetros: carpeta (str | None): carpeta de salida; si es None se usa 'graficos' junto al
+      programa.
+    Devuelve: str: ruta de la carpeta lista para guardar imágenes.
     """
     if carpeta is None:
         carpeta = os.path.join(carpetaPrograma, nombreCarpetaGraficos)
@@ -2536,34 +1841,17 @@ def prepararCarpetaGraficos(carpeta):
         os.makedirs(carpeta)
     return carpeta
 
-
 def calcularPosiciones(grafoNx, semilla):
     """Calcula dónde se dibuja cada vértice (distribución con resortes, resultado repetible).
-
-    La 'semilla' fija el azar del algoritmo: con la misma semilla el dibujo sale
-    siempre igual, lo cual permite comparar G y G' y reproducir las figuras del informe.
-
-    Parámetros:
-        grafoNx: grafo de networkx.
-        semilla (int): número que fija la disposición.
-    Devuelve:
-        dict: {vértice: (x, y)}.
+    Parámetros: grafoNx: grafo de networkx; semilla (int): número que fija la disposición.
+    Devuelve: dict: {vértice: (x, y)}.
     """
     return nx.spring_layout(grafoNx, seed=semilla, k=1.3, iterations=200)
 
-
 def dibujarDigrafo(ejes, sistema, titulo, semilla):
     """Dibuja el digrafo de dependencias resaltando ciclos y módulos críticos.
-
-    Convenciones del dibujo: el color del vértice crece con su grado de entrada
-    (más oscuro = más crítico); los vértices y arcos que forman parte de un ciclo
-    se dibujan en rojo; una flecha X -> Y significa 'X depende de Y'.
-
-    Parámetros:
-        ejes: ejes de matplotlib donde se dibuja.
-        sistema (dict): sistema de módulos.
-        titulo (str): título del gráfico.
-        semilla (int): semilla de la disposición.
+    Parámetros: ejes: ejes de matplotlib donde se dibuja; sistema (dict): sistema de módulos; titulo
+      (str): título del gráfico; semilla (int): semilla de la disposición.
     """
     modulos = sistema["modulos"]
     alcance = warshall(sistema)
@@ -2599,18 +1887,10 @@ def dibujarDigrafo(ejes, sistema, titulo, semilla):
     ejes.axis("off")
     return nodos
 
-
 def dibujarAlcanzabilidad(ejes, sistema, titulo):
     """Dibuja la matriz de alcanzabilidad A* como mapa de calor (1 = alcanzable).
-
-    Los unos de la diagonal (módulos en ciclos) se enmarcan en rojo. Se lee por fila:
-    el módulo de la fila depende (directa o indirectamente) de los de las columnas
-    con un 1; por columna: un cambio en el módulo de la columna puede afectar a las filas con un 1.
-
-    Parámetros:
-        ejes: ejes de matplotlib.
-        sistema (dict): sistema de módulos.
-        titulo (str): título del gráfico.
+    Parámetros: ejes: ejes de matplotlib; sistema (dict): sistema de módulos; titulo (str): título
+      del gráfico.
     """
     modulos = sistema["modulos"]
     alcance = warshall(sistema)
@@ -2633,21 +1913,12 @@ def dibujarAlcanzabilidad(ejes, sistema, titulo):
     ejes.set_yticklabels(modulos, fontsize=8)
     ejes.set_title(titulo + "\n" + str(contarUnos(modulos, modulos, alcance)) + " unos; recuadro rojo = ciclo", fontsize=10)
 
-
 def dibujarRedPonderada(ejes, grafo, camino, rutaFija, titulo, semilla):
     """Dibuja la red de distribución con sus pesos, el camino mínimo y una ruta fija.
-
-    El camino mínimo se dibuja en verde y grueso; la ruta fija heredada, en naranja
-    punteado; las aristas aéreas (corredor de drones) no se distinguen porque el
-    archivo no las marca: se ven por su peso.
-
-    Parámetros:
-        ejes: ejes de matplotlib.
-        grafo (dict): grafo[nodo][vecino] = minutos.
-        camino (list[str]): camino mínimo (puede estar vacío).
-        rutaFija (list[str]): ruta fija a comparar (puede estar vacía).
-        titulo (str): título del gráfico.
-        semilla (int): semilla de la disposición.
+    Parámetros: ejes: ejes de matplotlib; grafo (dict): grafo[nodo][vecino] = minutos; camino
+      (list[str]): camino mínimo (puede estar vacío); rutaFija (list[str]): ruta fija a comparar
+      (puede estar vacía); titulo (str): título del gráfico; semilla (int): semilla de la
+      disposición.
     """
     g = nx.Graph()
     for u in grafo:
@@ -2667,17 +1938,10 @@ def dibujarRedPonderada(ejes, grafo, camino, rutaFija, titulo, semilla):
     ejes.set_title(titulo, fontsize=10)
     ejes.axis("off")
 
-
 def dibujarRectasCostos(ejes, alternativas, horizonte):
     """Dibuja las rectas de costo acumulado C(n) = fijo + anual*n y sus puntos de equilibrio.
-
-    Cada punto de equilibrio es la intersección de dos rectas (solución del sistema
-    2 x 2); se marca con un círculo y su año.
-
-    Parámetros:
-        ejes: ejes de matplotlib.
-        alternativas (dict): {nombre: {'fijo', 'anual'}}.
-        horizonte (int): cantidad de años que se dibujan.
+    Parámetros: ejes: ejes de matplotlib; alternativas (dict): {nombre: {'fijo', 'anual'}};
+      horizonte (int): cantidad de años que se dibujan.
     """
     anios = list(range(horizonte + 1))
     for nombre in alternativas:
@@ -2698,16 +1962,9 @@ def dibujarRectasCostos(ejes, alternativas, horizonte):
     ejes.grid(alpha=0.3)
     ejes.legend(fontsize=8)
 
-
 def dibujarDecision(ejes, decision):
     """Dibuja v = P.w como barras apiladas: cuánto aporta cada criterio al puntaje de cada alternativa.
-
-    El largo total de cada barra es v (combinación lineal); cada tramo es
-    p(i,j) * w(j), el aporte del criterio j a la alternativa i.
-
-    Parámetros:
-        ejes: ejes de matplotlib.
-        decision (dict): decisión cargada.
+    Parámetros: ejes: ejes de matplotlib; decision (dict): decisión cargada.
     """
     alternativas = list(decision["puntajes"].keys())
     izquierda = [0.0] * len(alternativas)
@@ -2723,18 +1980,10 @@ def dibujarDecision(ejes, decision):
     ejes.set_title("Matriz de decisión ponderada: v = P.w", fontsize=10)
     ejes.legend(fontsize=7, loc="lower right")
 
-
 def calcularNiveles(sistema, inicio):
     """Asigna a cada vértice un nivel (columna) para dibujar un proceso de izquierda a derecha.
-
-    El nivel es la cantidad mínima de arcos desde 'inicio' (recorrido en anchura);
-    los vértices no alcanzables quedan en el nivel 0.
-
-    Parámetros:
-        sistema (dict): digrafo del proceso.
-        inicio (str): actividad inicial.
-    Devuelve:
-        dict: {vértice: nivel}.
+    Parámetros: sistema (dict): digrafo del proceso; inicio (str): actividad inicial.
+    Devuelve: dict: {vértice: nivel}.
     """
     niveles = {inicio: 0}
     cola = [inicio]
@@ -2751,17 +2000,10 @@ def calcularNiveles(sistema, inicio):
             niveles[codigo] = 0
     return niveles
 
-
 def dibujarProcesoGrafo(ejes, proceso, titulo):
     """Dibuja el digrafo de un proceso: naranja = manual, celeste = automática, gris = sin dato.
-
-    Cada vértice muestra su código y su duración; los arcos de un ciclo (retrabajo)
-    se dibujan en rojo.
-
-    Parámetros:
-        ejes: ejes de matplotlib.
-        proceso (dict): proceso cargado.
-        titulo (str): título del gráfico.
+    Parámetros: ejes: ejes de matplotlib; proceso (dict): proceso cargado; titulo (str): título del
+      gráfico.
     """
     sistema = armarSistemaProceso(proceso)
     alcance = warshall(sistema)
@@ -2802,17 +2044,11 @@ def dibujarProcesoGrafo(ejes, proceso, titulo):
     ejes.axis("off")
     ejes.margins(0.12)
 
-
 def guardarFigura(figura, carpeta, nombreArchivo, abrirVentana):
     """Guarda una figura como PNG, la cierra y opcionalmente la muestra en una ventana.
-
-    Parámetros:
-        figura: figura de matplotlib.
-        carpeta (str): carpeta de destino.
-        nombreArchivo (str): nombre del PNG.
-        abrirVentana (bool): True para abrir además una ventana interactiva.
-    Devuelve:
-        str: ruta del archivo guardado.
+    Parámetros: figura: figura de matplotlib; carpeta (str): carpeta de destino; nombreArchivo
+      (str): nombre del PNG; abrirVentana (bool): True para abrir además una ventana interactiva.
+    Devuelve: str: ruta del archivo guardado.
     """
     figura.tight_layout()
     ruta = os.path.join(carpeta, nombreArchivo)
@@ -2822,21 +2058,12 @@ def guardarFigura(figura, carpeta, nombreArchivo, abrirVentana):
     plt.close(figura)
     return ruta
 
-
 def generarGrafico(numero, carpeta, abrirVentana):
-    """RF-63 a RF-69. Genera uno de los gráficos usando los archivos JSON del caso.
-
-    Opciones: 1 digrafos G y G' (Punto 3); 2 matrices A* de G y G'; 3 red de
-    distribución con el camino mínimo, sin y con corredor de drones (Punto 3-h);
-    4 rectas de costo y equilibrios (Punto 4-h); 5 matriz de decisión (Punto 4-i);
-    6 procesos actual y reingenierizado (Punto 2).
-
-    Parámetros:
-        numero (int): gráfico a generar (1 a 6).
-        carpeta (str | None): carpeta de salida (None = carpeta 'graficos' del programa).
-        abrirVentana (bool): True para mostrar además una ventana.
-    Devuelve:
-        str | None: ruta de la imagen creada, o None si faltan datos o bibliotecas.
+    """Opcional (sin RF). Genera uno de los gráficos usando los archivos JSON del caso.
+    Parámetros: numero (int): gráfico a generar (1 a 6); carpeta (str | None): carpeta de salida
+      (None = carpeta 'graficos' del programa); abrirVentana (bool): True para mostrar además una
+      ventana.
+    Devuelve: str | None: ruta de la imagen creada, o None si faltan datos o bibliotecas.
     """
     if not hayGraficos:
         print("Para ver gráficos instale las bibliotecas:  pip install matplotlib networkx")
@@ -2892,12 +2119,9 @@ def generarGrafico(numero, carpeta, abrirVentana):
         return guardarFigura(figura, carpeta, "procesoPedidos.png", abrirVentana)
     return None
 
-
 def generarGraficos():
-    """RF-63 a RF-69. Menú de gráficos: elige uno o todos, los guarda como PNG y opcionalmente los abre.
-
-    Las imágenes se guardan en la carpeta 'graficos' junto al programa. Si faltan
-    matplotlib o networkx se avisa cómo instalarlas y el resto del programa sigue igual.
+    """Opcional (sin RF). Menú de gráficos: elige uno o todos, los guarda como PNG y opcionalmente los
+      abre.
     """
     if not hayGraficos:
         print("Esta opción necesita matplotlib y networkx. Instálelas con:  pip install matplotlib networkx")
@@ -2940,22 +2164,13 @@ def generarGraficos():
             if ruta is not None:
                 print("Gráfico guardado en", ruta)
 
-
-# -----------------------------------------------------------------------------
-# Casos de prueba automáticos
-# -----------------------------------------------------------------------------
+# --- Casos de prueba automáticos ---
 
 def registrarCaso(resultados, nombre, obtenido, esperado):
     """Compara lo obtenido con lo esperado (resuelto a mano), lo muestra y lo guarda.
-
-    Las comparaciones entre números usan Fraction, por lo tanto son EXACTAS: no hace
-    falta redondear ni usar tolerancias (Fraction(21, 5) == Fraction("4.2") es True).
-
-    Parámetros:
-        resultados (list[bool]): lista donde se acumula True/False de cada verificación.
-        nombre (str): descripción de lo que se verifica.
-        obtenido: valor calculado por el programa.
-        esperado: valor calculado a mano (informe o modelo.pdf).
+    Parámetros: resultados (list[bool]): lista donde se acumula True/False de cada verificación;
+      nombre (str): descripción de lo que se verifica. obtenido: valor calculado por el programa.
+      esperado: valor calculado a mano (informe o modelo.pdf).
     """
     coincide = (obtenido == esperado)
     if coincide:
@@ -2963,7 +2178,6 @@ def registrarCaso(resultados, nombre, obtenido, esperado):
     else:
         print("  FALLA ", nombre, "-> obtenido:", obtenido, " esperado:", esperado)
     resultados.append(coincide)
-
 
 def probarModulos(resultados):
     """Casos 1 a 3: digrafos de dependencias (Tabla 2, G' con EVT y subgrafo del anexo)."""
@@ -3010,7 +2224,6 @@ def probarModulos(resultados):
         registrarCaso(resultados, "unos de A*", contarUnos(anexo["modulos"], anexo["modulos"], warshall(anexo)), 19)
     else:
         resultados.append(False)
-
 
 def probarAlgebra(resultados):
     """Casos 4 a 6: sistema de la Tabla 6, equilibrios y camino mínimo (todo con Fraction)."""
@@ -3063,7 +2276,6 @@ def probarAlgebra(resultados):
         registrarCaso(resultados, "D a Z3 con corredor de drones", [distancia, camino], [14, ["D", "Z3"]])
     else:
         resultados.append(False)
-
 
 def probarDecisionYRelaciones(resultados):
     """Casos 7 a 10: matriz de decisión, incidencia, trazabilidad y procesos (RF-42 a RF-58)."""
@@ -3125,7 +2337,6 @@ def probarDecisionYRelaciones(resultados):
     else:
         resultados.append(False)
 
-
 def probarConteoYOrdenamiento(resultados):
     """Casos 11 a 13: combinatoria, ciclo de tres módulos, ordenamiento y búsqueda."""
     print("Caso 11 - Conteo (Puntos 1-h, 2-k y 5-i)")
@@ -3160,14 +2371,8 @@ def probarConteoYOrdenamiento(resultados):
     registrarCaso(resultados, "búsqueda secuencial (no está)", busquedaSecuencial(registros, "valor", 4), -1)
     registrarCaso(resultados, "lista vacía", [ordenarBurbuja([], "valor", False), busquedaBinaria([], "valor", 1)], [[], -1])
 
-
 def ejecutarCasosDePrueba():
-    """Corre todos los casos de prueba y muestra cuántas verificaciones pasaron.
-
-    Cada resultado del programa se compara con el valor calculado a mano en el informe
-    o en modelo.pdf. Los archivos JSON deben estar en la carpeta del programa. Si
-    matplotlib y networkx están instalados, también se comprueba que se genera un gráfico.
-    """
+    """Corre todos los casos de prueba y muestra cuántas verificaciones pasaron."""
     resultados = []
     print()
     print("Casos de prueba (los archivos JSON deben estar en la carpeta del programa)")
@@ -3177,7 +2382,7 @@ def ejecutarCasosDePrueba():
     probarDecisionYRelaciones(resultados)
     probarConteoYOrdenamiento(resultados)
     if hayGraficos:
-        print("Caso 14 - Gráficos (RF-63 a RF-69)")
+        print("Caso 14 - Gráficos (opcional)")
         carpetaTemporal = tempfile.mkdtemp()
         plt.switch_backend("Agg")           # sin ventanas: solo se guarda el archivo
         rutaImagen = generarGrafico(1, carpetaTemporal, False)
@@ -3190,10 +2395,7 @@ def ejecutarCasosDePrueba():
     print("Resultado:", aprobados, "de", len(resultados), "verificaciones correctas",
           "(" + str(round(time.time() - inicio, 2)) + " s).")
 
-
-# -----------------------------------------------------------------------------
-# Programa principal (menú)
-# -----------------------------------------------------------------------------
+# --- Programa principal (menú) ---
 
 def mostrarMenu():
     """Imprime el menú agrupado por tema (los números de RF indican el requisito que cubre)."""
@@ -3215,32 +2417,21 @@ def mostrarMenu():
     print(" 13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)")
     print(" Herramientas")
     print("  9. Ejecutar los casos de prueba")
-    print(" 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)")
+    print(" 14. Generar gráficos ( necesita matplotlib y networkx)")
     print("  0. Salir")
-
 
 def elegirOrigenDeDatos(mensaje):
     """Pregunta si los datos se cargan desde archivo o por teclado y devuelve 'a' o 't'.
-
-    Parámetros:
-        mensaje (str): texto de la pregunta.
-    Devuelve:
-        str: 'a' para archivo, 't' para teclado (cualquier otra respuesta es teclado).
+    Parámetros: mensaje (str): texto de la pregunta.
+    Devuelve: str: 'a' para archivo, 't' para teclado (cualquier otra respuesta es teclado).
     """
     forma = input(mensaje + " desde archivo (a) o por teclado (t)? ").strip().lower()
     if forma == "a":
         return "a"
     return "t"
 
-
 def main():
-    """Programa principal: muestra el menú y ejecuta la opción elegida con match/case.
-
-    match/case es el equivalente en Python de switch/case (requiere Python 3.10 o
-    superior). El ciclo termina cuando el usuario elige 0. El sistema de módulos
-    cargado se guarda en la variable 'sistema' para poder analizarlo varias veces
-    sin volver a cargarlo.
-    """
+    """Programa principal: muestra el menú y ejecuta la opción elegida con match/case."""
     sistema = None
     opcion = ""
     while opcion != "0":

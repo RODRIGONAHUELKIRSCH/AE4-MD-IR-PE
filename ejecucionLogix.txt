@@ -16,7 +16,7 @@
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 3
 Primero cargue los módulos (opción 1 o 2).
@@ -38,7 +38,7 @@ Primero cargue los módulos (opción 1 o 2).
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 99
 Opción inválida.
@@ -60,7 +60,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 1
 Nombre del archivo (Enter = modulosLogix.json): 
@@ -83,7 +83,7 @@ Se cargaron 9 módulos: ['PED', 'CLI', 'INV', 'ROB', 'ASG', 'RUT', 'SEG', 'ENT',
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 3
 
@@ -171,7 +171,7 @@ Orden de migración: no existe porque hay ciclos.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 4
 Módulos que se modifican (separados por espacio): INV ROB
@@ -195,7 +195,7 @@ Impacto según A*: 8 módulo(s): ['PED', 'INV', 'ROB', 'ASG', 'RUT', 'SEG', 'ENT
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 8
 Código del módulo a consultar: INV
@@ -222,7 +222,7 @@ Módulo INV
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 8
 Código del módulo a consultar: XYZ
@@ -245,7 +245,7 @@ El módulo XYZ no existe en el sistema cargado.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 5
 ¿Cargar el sistema desde archivo (a) o por teclado (t)? a
@@ -287,7 +287,7 @@ Costo = vector de cantidades · vector solución = 273
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 6
 ¿Cargar las alternativas desde archivo (a) o por teclado (t)? a
@@ -317,7 +317,7 @@ Nombre del archivo (Enter = costosAlternativas.json):
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 7
 Nombre del archivo (Enter = redDistribucion.json): 
@@ -368,7 +368,7 @@ Ahorro del camino mínimo: 7 minutos
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 7
 Nombre del archivo (Enter = redDistribucion.json): redConDrones.json
@@ -417,7 +417,7 @@ Ruta fija para comparar (vértices separados por espacio, Enter para omitir):
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 10
 Nombre del archivo (Enter = decisionAlternativas.json): 
@@ -462,7 +462,7 @@ Con C4 = 0.5 y el resto en proporción: B (58/15 ≈ 3.8667) > C (56/15 ≈ 3.73
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 11
 Nombre del archivo (Enter = incidenciaSolicitudes.json): 
@@ -485,7 +485,7 @@ S . S^T (diagonal = alcance directo; fuera de la diagonal = módulos compartidos
    s5     0    0    0    0    1    1
    s6     1    0    3    0    1    4
 
-Alcance directo a = S.u: s1=2  s2=2  s3=4  s4=2  s5=1  s6=4  
+Alcance directo a = S.u: s1=2  s2=2  s3=4  s4=2  s5=1  s6=4
 Solicitudes de mayor a menor alcance (burbuja): ['s3(4)', 's6(4)', 's1(2)', 's2(2)', 's4(2)', 's5(1)']
 Pares con módulos en común: ['s3-s6(3)', 's1-s2(1)', 's1-s3(1)', 's1-s6(1)', 's5-s6(1)']
 Mayor superposición: s3-s6 comparten ['ASG', 'RUT', 'SEG'] -> conviene planificarlas juntas.
@@ -537,7 +537,7 @@ Pruebas para reverificar esos requerimientos (filas de RT): ['T1', 'T2']
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 12
 Nombre del archivo (Enter = procesoPedido.json): 
@@ -598,7 +598,7 @@ Camino más largo: 65 min -> 14 min; reducción = 78.5 %
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 13
 
@@ -630,7 +630,7 @@ n para un conteo propio (0 para omitir, hasta 20): 0
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 14
 ¿Abrir los gráficos también en una ventana? (s/N): N
@@ -704,7 +704,7 @@ Gráfico (0 a 7): 0
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 3
 
@@ -792,7 +792,7 @@ Orden de migración: no existe porque hay ciclos.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: A
 Opción inválida.
@@ -814,7 +814,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: B
 Opción inválida.
@@ -836,7 +836,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: C
 Opción inválida.
@@ -858,7 +858,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: B
 Opción inválida.
@@ -880,7 +880,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: C
 Opción inválida.
@@ -902,7 +902,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 
 Opción inválida.
@@ -924,7 +924,7 @@ Opción inválida.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 3
 
@@ -1012,7 +1012,7 @@ Orden de migración: no existe porque hay ciclos.
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 9
 
@@ -1103,10 +1103,10 @@ Caso 13 - Ordenamiento y búsqueda
   OK     búsqueda secuencial (está)
   OK     búsqueda secuencial (no está)
   OK     lista vacía
-Caso 14 - Gráficos (RF-63 a RF-69)
+Caso 14 - Gráficos (opcional)
   OK     se creó el gráfico de los digrafos
 
-Resultado: 72 de 72 verificaciones correctas (0.13 s).
+Resultado: 72 de 72 verificaciones correctas (0.28 s).
 
 ================ LOGIX-Analyzer v2.0 ================
  Módulos y dependencias
@@ -1125,7 +1125,7 @@ Resultado: 72 de 72 verificaciones correctas (0.13 s).
  13. Conteo: combinaciones, variaciones, permutaciones (RF-59 a RF-62)
  Herramientas
   9. Ejecutar los casos de prueba
- 14. Generar gráficos (RF-63 a RF-69, necesita matplotlib y networkx)
+ 14. Generar gráficos (opcional, necesita matplotlib y networkx)
   0. Salir
 Opción: 0
 Fin del programa.
